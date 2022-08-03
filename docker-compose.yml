@@ -1,0 +1,8 @@
+version: "3.9"
+
+services:
+  sync-gdrive-revisions:
+    image: .
+    container_name: sync-gdrive-revisions
+    # ports:
+    #   - "9042:9042"

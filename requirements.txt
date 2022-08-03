@@ -1,0 +1,9 @@
+python-dotenv
+SQLAlchemy
+asyncpg
+psycopg2-binary
+alembic
+tqdm
+coloredlogs
+streamlit
+timeago

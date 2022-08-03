@@ -3,6 +3,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# alembic versions
+versions
+postgres.cfg
+alembic.ini
+
+# oauth files
+storage.json
+client_id.json
+
+*.feather
+
 # C extensions
 *.so
 
