@@ -12,6 +12,11 @@ See [this tutorial](https://codelabs.developers.google.com/codelabs/gsuite-apis-
 
 # Get client Id from Google Drive API
 # See tutorial: https://codelabs.developers.google.com/codelabs/gsuite-apis-intro/#0
+
+# mv client_id.json to repo dir
+mv client_id.json ~/repos/google-drive-insights/google_drive_insights/client_id.json
+# initialize oauth
+python connect_google_drive.py
 ```
 
 ### 1.2 PostgreSQL configuration

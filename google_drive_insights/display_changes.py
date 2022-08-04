@@ -209,6 +209,7 @@ def fetch_revisions_over_files(
     # one-liner not possible when displaying progress
     # df["nrevision"] = df["file_id"].map(lambda x: len(fetch_revisions(x)))
 
+    logger.info(f"fetching revisions")
     if use_sql_cache:
         existing_ids: pd.DataFrame = pd.read_sql_query("SELECT id FROM revision; ", con)
 
@@ -379,8 +380,9 @@ if __name__ == "__main__":
         logger.info(f"start polling from {start_page_token=:,}")
 
     elif args.use_cache_sql:
+        df = files_from_sql()
         # df = changes_from_sql()
-        df = revisions_from_sql()
+        # df = revisions_from_sql()
         start_page_token = df.page_token.max()
 
     if not args.dryrun:

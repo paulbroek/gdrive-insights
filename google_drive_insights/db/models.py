@@ -9,8 +9,8 @@ import asyncio
 import configparser
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -28,6 +28,7 @@ from rarc_utils.sqlalchemy_base import \
 from rarc_utils.sqlalchemy_base import load_config
 from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
                         String, Text, UniqueConstraint, func)
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select  # type: ignore[import]
 from sqlalchemy.orm import relationship
@@ -121,12 +122,20 @@ class Change(Base):
     """
 
     __tablename__ = "change"
-    id = Column(Integer, primary_key=True)
+    # id = Column(Integer, primary_key=True)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        unique=True,
+        nullable=False,
+        default=uuid.uuid4,
+    )
 
     removed = Column(Boolean)
     time = Column(DateTime)
     type = Column(String)
     changeType = Column(String)
+    page_token = Column(Integer)
 
     file_id = Column(String, ForeignKey("file.id"), nullable=False)
     file = relationship("File", uselist=False, lazy="selectin")
@@ -143,17 +152,14 @@ class Change(Base):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
     def __repr__(self):
-        return "Change(title={}, author={}, avg_rating={:.2f}, custom_rating={}, nreview={}, len_descrip={}, language={}, ngenre={}, ndownload={}, created={})".format(
-            self.title,
-            self.author.name,
-            self.avg_rating,
-            self.custom_rating,
-            self.num_reviews,
-            len(self.description) if self.description is not None else 0,
-            self.language,
-            len(self.genres),
-            len(self.downloaded_items),
-            self.created,
+        return (
+            "Change(removed={}, time={}, type={}, page_token={}, file_name={})".format(
+                self.removed,
+                self.time.name,
+                self.type,
+                self.page_token,
+                self.file.name,
+            )
         )
 
 
