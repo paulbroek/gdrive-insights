@@ -7,3 +7,5 @@ tqdm
 coloredlogs
 streamlit
 timeago
+pandas
+oauth2client

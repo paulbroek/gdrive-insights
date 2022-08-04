@@ -379,19 +379,14 @@ if __name__ == "__main__":
         logger.info(f"start polling from {start_page_token=:,}")
 
     elif args.use_cache_sql:
-        df = changes_from_sql()
+        # df = changes_from_sql()
+        df = revisions_from_sql()
         start_page_token = df.page_token.max()
 
-    df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
-
-    if args.dryrun:
-        sys.exit()
-
-    changes = fetch_changes(
-        saved_start_page_token=start_page_token, max_fetch=args.nfetch
-    )
-
-    rv, fids = revisions_pipeline(df_pdf, use_sql_cache=False)
+    if not args.dryrun:
+        changes = fetch_changes(
+            saved_start_page_token=start_page_token, max_fetch=args.nfetch
+        )
 
     # append lines to existing dataset
     if args.use_cache:
@@ -399,6 +394,12 @@ if __name__ == "__main__":
 
     else:
         df = changes_to_pandas(changes)
+
+    df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
+    rv, fids = revisions_pipeline(df_pdf, use_sql_cache=False)
+
+    if args.dryrun:
+        sys.exit()
 
     if args.save:
         df.to_feather(CHANGES_FILE)
