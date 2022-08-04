@@ -31,6 +31,8 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+import psycopg2
+from google_drive_insights import config as config_dir
 from google_drive_insights.args import ArgParser
 from google_drive_insights.db.helpers import update_is_forbidden
 from google_drive_insights.db.methods import methods as dm
@@ -40,8 +42,11 @@ from googleapiclient.discovery import build  # type: ignore[import]
 from googleapiclient.errors import HttpError  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
 from rarc_utils.log import setup_logger
-from rarc_utils.sqlalchemy_base import get_async_session
+from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
+                                        load_config)
 from tqdm import tqdm  # type: ignore[import]
+
+psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 
 async_session = get_async_session(psql)
 
@@ -58,6 +63,9 @@ GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
 PDF_FILETYPE = "application/pdf"
 
 # todo: connect to postgresql connection
+con = psycopg2.connect(
+    database=psql.db, user=psql.user, password=psql.passwd, host=psql.host, port="5432"
+)
 
 
 #### google drive api
@@ -110,6 +118,19 @@ def changes_to_sql(df: pd.DataFrame, table="change") -> None:
 def revisions_to_sql(df: pd.DataFrame, table="revision") -> None:
 
     df.to_sql(table, con, if_exists="append", index=False, index_label=False)
+
+
+def files_from_sql(n: Optional[int] = None, dropForbiddenRows=True) -> pd.DataFrame:
+    q = "SELECT * FROM file"
+
+    if dropForbiddenRows:
+        q += " WHERE NOT is_forbidden"
+
+    if n is not None:
+        q += " LIMIT {}".format(n)
+
+    logger.debug(q)
+    return pd.read_sql_query(q, con)
 
 
 def changes_from_sql(n: Optional[int] = None, dropForbiddenRows=True) -> pd.DataFrame:

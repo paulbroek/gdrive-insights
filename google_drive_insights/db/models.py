@@ -6,34 +6,20 @@ using:
 
 import argparse
 import asyncio
-import configparser
 import logging
-import os
 import uuid
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
 
-import pandas as pd
-import timeago
+import timeago  # type: ignore[import]
 from google_drive_insights import config as config_dir
 from rarc_utils.log import loggingLevelNames, set_log_level, setup_logger
-from rarc_utils.misc import AttrDict
-from rarc_utils.sqlalchemy_base import \
-    aget_str_mappings as aget_str_mappings_custom
-from rarc_utils.sqlalchemy_base import async_main
-from rarc_utils.sqlalchemy_base import create_many as create_many_custom
-from rarc_utils.sqlalchemy_base import get_async_session, get_session
-from rarc_utils.sqlalchemy_base import \
-    get_str_mappings as get_str_mappings_custom
-from rarc_utils.sqlalchemy_base import load_config
-from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
-                        String, Text, UniqueConstraint, func)
+from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
+                                        get_session, load_config)
+from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
+                        UniqueConstraint, func)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.future import select  # type: ignore[import]
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Table
-from tqdm import tqdm  # type: ignore[import]
 
 LOG_FMT = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # title
 
