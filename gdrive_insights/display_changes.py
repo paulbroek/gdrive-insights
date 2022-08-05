@@ -458,7 +458,7 @@ if __name__ == "__main__":
     elif args.use_cache_sql:
         df = files_from_sql()
         # df = changes_from_sql()
-        # df = revisions_from_sql()
+        rv = revisions_from_sql()
         # start_page_token = df.page_token.max()
         # start_page_token = df.page_token.iloc[-1]
 
@@ -476,10 +476,11 @@ if __name__ == "__main__":
 
     # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
     view = filter_files(df, keep=None)
-    rv, fids = revisions_pipeline(view, use_sql_cache=False)
 
     if args.dryrun:
         sys.exit()
+
+    rv, fids = revisions_pipeline(view, use_sql_cache=False)
 
     if args.save:
         df.to_feather(CHANGES_FILE)
