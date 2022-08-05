@@ -204,7 +204,7 @@ def filter_google_documents(
 
 def filter_pdf_files(df: pd.DataFrame, keep: Optional[int] = None) -> pd.DataFrame:
     """Filter pdf files from dataset."""
-    view = df.query("file_mimeType == '{}'".format(PDF_FILETYPE)).copy()
+    view = df.query("file_mimeType == '{}'".format(PDF_FILETYPE))
 
     if keep is not None:
         return view.tail(keep)
@@ -294,12 +294,58 @@ def revisions_pipeline(
     Todo:
         - implement cache. save all revisions to sqlite
     """
-    # filter_google_documents
-    view, forbidden_ids = df.pipe(filter_pdf_files, keep=keep).pipe(
-        fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache
-    )
+    view, forbidden_ids = pd.concat(
+        [
+            df.pipe(filter_google_documents, keep=keep),
+            df.pipe(filter_pdf_files, keep=keep),
+        ],
+        ignore_index=True,
+    ).pipe(fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache)
 
     return view, forbidden_ids
+
+def fetch_files(saved_start_page_token, max_fetch=None) -> List[dict]:
+    """Retrieve the list of files for the currently authenticated user.
+
+    Args:
+        saved_start_page_token : StartPageToken for the current state of the
+        account.
+    Returns:
+        saved start page token.
+    """
+    files = []
+
+    try:
+
+        # Begin with our last saved start token for this user or the
+        page_token = saved_start_page_token
+
+        nfetch = 0
+        while page_token is not None:
+            response = (
+                DRIVE.files().list(pageToken=page_token, spaces="drive").execute()
+            )
+            for file in response.get("files"):
+                # print(F'Change found for file: {change.get("fileId")}')
+                file["page_token"] = page_token
+
+            files += response.get("files")
+            print(f"{page_token=} {files[-1]['name']=}")
+            if "newStartPageToken" in response:
+                # Last page, save this token for the next polling interval
+                saved_start_page_token = response.get("newStartPageToken")
+            page_token = response.get("nextPageToken")
+
+            if max_fetch is not None and nfetch >= max_fetch:
+                break
+
+            nfetch += 1
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        saved_start_page_token = None
+
+    return files
 
 
 def fetch_changes(saved_start_page_token, max_fetch=None) -> List[dict]:
@@ -418,8 +464,8 @@ if __name__ == "__main__":
     else:
         df = changes_to_pandas(changes)
 
-    df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
-    rv, fids = revisions_pipeline(df_pdf, use_sql_cache=False)
+    # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
+    rv, fids = revisions_pipeline(df, use_sql_cache=False)
 
     if args.dryrun:
         sys.exit()

@@ -67,7 +67,7 @@ class methods:
                     "file_name": "name",
                 }
             )[list(columns)]
-            .assign(index=df["file_id"])
+            .assign(index=df["id"])
             .set_index("index")
             .drop_duplicates("id")
             .to_dict("index")

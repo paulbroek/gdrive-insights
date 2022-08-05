@@ -55,7 +55,7 @@ if not creds or creds.invalid:
 DRIVE = discovery.build("drive", "v3", http=creds.authorize(Http()))
 
 files = DRIVE.files().list().execute().get("files", [])
-for f in files:
+for f in files[:10]:
     print(f'{f["mimeType"]:<50} {f["name"]}')
 
 # detailed python help at: https://developers.google.com/drive/api/guides/manage-changes#python
