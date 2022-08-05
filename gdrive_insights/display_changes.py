@@ -452,19 +452,20 @@ if __name__ == "__main__":
         df = files_from_sql()
         # df = changes_from_sql()
         # df = revisions_from_sql()
-        start_page_token = df.page_token.max()
+        # start_page_token = df.page_token.max()
+        # start_page_token = df.page_token.iloc[-1]
 
-    if not args.dryrun:
-        changes = fetch_changes(
-            saved_start_page_token=start_page_token, max_fetch=args.nfetch
-        )
+    # if not args.dryrun:
+    #     changes = fetch_changes(
+    #         saved_start_page_token=start_page_token, max_fetch=args.nfetch
+    #     )
 
     # append lines to existing dataset
-    if args.use_cache:
-        df = df.append(changes_to_pandas(changes)).reset_index(drop=True)
+    # if args.use_cache:
+    #     df = df.append(changes_to_pandas(changes)).reset_index(drop=True)
 
-    else:
-        df = changes_to_pandas(changes)
+    # else:
+    #     df = changes_to_pandas(changes)
 
     # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
     rv, fids = revisions_pipeline(df, use_sql_cache=False)
