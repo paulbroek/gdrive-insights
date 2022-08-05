@@ -420,16 +420,16 @@ def revisions_data_analysis(
     rev_df      revisions dataset
     """
     gb = (
-        rev_df.groupby("fileId")
+        rev_df.groupby("file_id")
         .agg(
-            count=("fileId", "count"),
+            count=("file_id", "count"),
             first_modified=("modifiedTime", "first"),
             last_modified=("modifiedTime", "last"),
         )
         .sort_values("count")
-    )
+    ).reset_index()
     gb["last_min_first"] = gb["last_modified"] - gb["first_modified"]
-    merged = pd.merge(gb, changes_df[["fileId", "file_name"]], how="left", on="fileId")
+    merged = pd.merge(gb, changes_df[["id", "name"]], how="left", left_on="file_id", right_on='id')
     # now you see that fileId with more than 1 revision are max 1 month old. so google only saves revisions for a month,
     # you cannot fetch them from longer ago, should fetch them daily to gather this data
     # only recent pdf files show a lot of revisions? why? is revision data deleted over time?
