@@ -61,6 +61,7 @@ SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 UNNAMED = "Naamloos document"
 GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
 PDF_FILETYPE = "application/pdf"
+FILE_ID = 'id'
 
 # todo: connect to postgresql connection
 con = psycopg2.connect(
@@ -170,7 +171,7 @@ def revisions_from_sql(n: Optional[int] = None) -> pd.DataFrame:
 def set_file_is_forbidden_df(df, file_id: str) -> pd.DataFrame:
     df = df.copy()
     assert isinstance(file_id, str)
-    ixs = df[df.file_id.isin([file_id])].index
+    ixs = df[df[FILE_ID].isin([file_id])].index
     assert ixs.shape[0] == 1
     ix = ixs[0]
     df.loc[ix, "is_forbidden"] = True
@@ -191,7 +192,7 @@ def filter_google_documents(
     # ].copy()
 
     view = df.query(
-        "file_mimeType == '{}' & file_name != '{}'".format(
+        "mimeType == '{}' & name != '{}'".format(
             GOOGLE_DOCUMENT_FILETYPE, UNNAMED
         )
     ).copy()
@@ -204,7 +205,7 @@ def filter_google_documents(
 
 def filter_pdf_files(df: pd.DataFrame, keep: Optional[int] = None) -> pd.DataFrame:
     """Filter pdf files from dataset."""
-    view = df.query("file_mimeType == '{}'".format(PDF_FILETYPE))
+    view = df.query("mimeType == '{}'".format(PDF_FILETYPE))
 
     if keep is not None:
         return view.tail(keep)
@@ -241,7 +242,7 @@ def fetch_revisions_over_files(
     # }
     forbidden_ids = set()
     file_id_to_revisions = {}
-    for file_id in tqdm(df.file_id.values, disable=not progress):
+    for file_id in tqdm(df[FILE_ID].values, disable=not progress):
         try:
             rev = fetch_revisions(file_id)
 
