@@ -13,4 +13,5 @@ REPO_DIR = Path(REPO_PATH) / "gdrive_insights"
 DATA_DIR = REPO_DIR / "data"
 
 CHANGES_FILE = DATA_DIR / "changes.feather"
+FILES_FILE = DATA_DIR / "files.feather"
 REVISIONS_FILE = DATA_DIR / "revisions.feather"

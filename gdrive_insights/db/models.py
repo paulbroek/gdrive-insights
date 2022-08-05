@@ -82,6 +82,7 @@ class File(Base):
 
     created = Column(DateTime, server_default=func.now())  # current_timestamp()
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    path = Column(String)
 
     is_forbidden = Column(Boolean, default=False, nullable=False)
 

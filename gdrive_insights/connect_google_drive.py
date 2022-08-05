@@ -22,8 +22,8 @@ from httplib2 import Http
 from oauth2client import client, file, tools
 
 
-def find_parent_folders(fileId: str, fullPath="") -> Optional[str]:
-    """Find parent folders.
+def construct_file_path(fileId: str, fullPath="") -> Optional[str]:
+    """Construct file path.
 
     Repeatedly calls
         GET https://www.googleapis.com/drive/v3/files/[FileId]?fields=parents
@@ -39,7 +39,7 @@ def find_parent_folders(fileId: str, fullPath="") -> Optional[str]:
     if parent_id is not None:
         print(f"{parent_id=:<40} {name=:<50} ")
         fullPath = "/" + name + fullPath
-        return find_parent_folders(parent_id, fullPath=fullPath)
+        return construct_file_path(parent_id, fullPath=fullPath)
 
     print(f"{fullPath=}")
 

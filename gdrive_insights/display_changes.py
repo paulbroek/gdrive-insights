@@ -61,7 +61,7 @@ SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 UNNAMED = "Naamloos document"
 GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
 PDF_FILETYPE = "application/pdf"
-FILE_ID = 'id'
+FILE_ID = "id"
 
 # todo: connect to postgresql connection
 con = psycopg2.connect(
@@ -192,9 +192,7 @@ def filter_google_documents(
     # ].copy()
 
     view = df.query(
-        "mimeType == '{}' & name != '{}'".format(
-            GOOGLE_DOCUMENT_FILETYPE, UNNAMED
-        )
+        "mimeType == '{}' & name != '{}'".format(GOOGLE_DOCUMENT_FILETYPE, UNNAMED)
     ).copy()
 
     if keep is not None:
@@ -211,6 +209,18 @@ def filter_pdf_files(df: pd.DataFrame, keep: Optional[int] = None) -> pd.DataFra
         return view.tail(keep)
 
     return view
+
+
+def filter_files(df, keep=None):
+    view, forbidden_ids = pd.concat(
+        [
+            df.pipe(filter_google_documents, keep=keep),
+            df.pipe(filter_pdf_files, keep=keep),
+        ],
+        ignore_index=True,
+    )
+
+    return view, forbidden_ids
 
 
 def fetch_revisions(file_id: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -285,7 +295,7 @@ def fetch_revisions_over_files(
 
 
 def revisions_pipeline(
-    df: pd.DataFrame, keep=None, progress=True, use_sql_cache=True
+    df: pd.DataFrame, progress=True, use_sql_cache=True
 ) -> pd.DataFrame:
     """Complete revisions pipeline.
 
@@ -295,15 +305,9 @@ def revisions_pipeline(
     Todo:
         - implement cache. save all revisions to sqlite
     """
-    view, forbidden_ids = pd.concat(
-        [
-            df.pipe(filter_google_documents, keep=keep),
-            df.pipe(filter_pdf_files, keep=keep),
-        ],
-        ignore_index=True,
-    ).pipe(fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache)
+    view = df.pipe(fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache)
 
-    return view, forbidden_ids
+    return view
 
 
 def fetch_files(saved_start_page_token, max_fetch=None) -> List[dict]:
@@ -414,7 +418,7 @@ def revisions_data_analysis(
     rev_df      revisions dataset
     """
     gb = (
-        view.groupby("fileId")
+        rev_df.groupby("fileId")
         .agg(
             count=("fileId", "count"),
             first_modified=("modifiedTime", "first"),
@@ -441,12 +445,13 @@ if __name__ == "__main__":
     start_page_token = int(args.start_page_token)
 
     if args.use_cache:
-        df = pd.read_feather(CHANGES_FILE)
+        # df = pd.read_feather(CHANGES_FILE)
+        df = pd.read_feather(FILES_FILE)
         rv = pd.read_feather(REVISIONS_FILE)
 
-        start_page_token = df.page_token.max()
+        # start_page_token = df.page_token.max()
 
-        logger.info(f"start polling from {start_page_token=:,}")
+        # logger.info(f"start polling from {start_page_token=:,}")
 
     elif args.use_cache_sql:
         df = files_from_sql()
@@ -468,7 +473,8 @@ if __name__ == "__main__":
     #     df = changes_to_pandas(changes)
 
     # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
-    rv, fids = revisions_pipeline(df, use_sql_cache=False)
+    view, forbidden_ids = filter_files(df, keep=None)
+    rv, fids = revisions_pipeline(view, use_sql_cache=False)
 
     if args.dryrun:
         sys.exit()
@@ -478,15 +484,15 @@ if __name__ == "__main__":
         rv.to_feather(REVISIONS_FILE)
 
     if args.push:
-        res_files = loop.run_until_complete(dm.push_files(df_pdf, async_session))
+        res_files = loop.run_until_complete(dm.push_files(view, async_session))
         res_revs = loop.run_until_complete(dm.push_revisions(rv, async_session))
 
     # fetch new revisions
     # view, forbidden_ids = revisions_pipeline(
     #     df[~df.is_forbidden], progress=1, keep=None, use_sql_cache=False
     # )
-    # view = revisions_from_feather()
-    # revisions_data_analysis(df, view).tail(25)
+    # rv = revisions_from_feather()
+    # revisions_data_analysis(df, rv).tail(25)
 
     # todo: push files, revisions, but filter out irrelevant files first
 
