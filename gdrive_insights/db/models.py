@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 import timeago  # type: ignore[import]
-from google_drive_insights import config as config_dir
+from gdrive_insights import config as config_dir
 from rarc_utils.log import loggingLevelNames, set_log_level, setup_logger
 from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
                                         get_session, load_config)

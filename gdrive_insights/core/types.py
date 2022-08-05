@@ -1,4 +1,4 @@
-"""types.py, define types for google-drive-insights."""
+"""types.py, define types for gdrive-insights."""
 
 from typing import Any, Dict, NewType, Union  # , Type
 

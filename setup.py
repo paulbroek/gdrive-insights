@@ -12,11 +12,11 @@ requires = []
 # ]
 
 setup(
-    name="google_drive_insights",
+    name="gdrive_insights",
     version="0.0.1",
     description="Google Drive insights - \
         Show your recent Google Drive file revisions in a streamlit dashboard. Which files do you change a lot?",
-    url="git@github.com:paulbroek/google-drive-insights.git",
+    url="git@github.com:paulbroek/gdrive-insights.git",
     author="Paul Broek",
     author_email="pcbroek@paulbroek.nl",
     license="unlicense",

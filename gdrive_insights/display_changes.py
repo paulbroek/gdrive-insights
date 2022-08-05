@@ -18,7 +18,7 @@ Todo:
 
 How to run:
     conda activate py39
-    cd ~/repos/google-drive-insights
+    cd ~/repos/gdrive-insights
     pip install --upgrade .
     ipy display_changes -i -- -s -n 5
 """
@@ -32,12 +32,12 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import psycopg2
-from google_drive_insights import config as config_dir
-from google_drive_insights.args import ArgParser
-from google_drive_insights.db.helpers import update_is_forbidden
-from google_drive_insights.db.methods import methods as dm
-from google_drive_insights.db.models import psql
-from google_drive_insights.settings import CHANGES_FILE, REVISIONS_FILE
+from gdrive_insights import config as config_dir
+from gdrive_insights.args import ArgParser
+from gdrive_insights.db.helpers import update_is_forbidden
+from gdrive_insights.db.methods import methods as dm
+from gdrive_insights.db.models import psql
+from gdrive_insights.settings import CHANGES_FILE, REVISIONS_FILE
 from googleapiclient.discovery import build  # type: ignore[import]
 from googleapiclient.errors import HttpError  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
@@ -303,6 +303,7 @@ def revisions_pipeline(
     ).pipe(fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache)
 
     return view, forbidden_ids
+
 
 def fetch_files(saved_start_page_token, max_fetch=None) -> List[dict]:
     """Retrieve the list of files for the currently authenticated user.

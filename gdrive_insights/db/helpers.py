@@ -2,7 +2,7 @@
 
 import logging
 
-import google_drive_insights.config as config_dir
+import gdrive_insights.config as config_dir
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 
 from ..core.types import FileId, FileRec

@@ -1,4 +1,4 @@
-# google-drive-insights
+# gdrive-insights
 
 Show your recent Google Drive file revisions in a streamlit dashboard. Which files do you use a lot?
 
@@ -14,7 +14,7 @@ See [this tutorial](https://codelabs.developers.google.com/codelabs/gsuite-apis-
 # See tutorial: https://codelabs.developers.google.com/codelabs/gsuite-apis-intro/#0
 
 # mv client_id.json to repo dir
-mv client_id.json ~/repos/google-drive-insights/google_drive_insights/client_id.json
+mv client_id.json ~/repos/gdrive-insights/gdrive_insights/client_id.json
 # initialize oauth
 python connect_google_drive.py
 ```
@@ -37,14 +37,14 @@ db          = gdrive
 And copy the file to anaconda `config` dir after installing
 
 ```bash
-pip install -U ~/repos/google-drive-insights
-cp ~/repos/google-drive-insights/google_drive_insights/config/postgres.cfg /home/paul/anaconda3/envs/py39/lib/python3.9/site-packages/google_drive_insights/config
+pip install -U ~/repos/gdrive-insights
+cp ~/repos/gdrive-insights/gdrive_insights/config/postgres.cfg /home/paul/anaconda3/envs/py39/lib/python3.9/site-packages/gdrive_insights/config
 ```
 
 Initialize all models in database:
 
 ```bash
-cd ~/repos/google-drive-insights/google_drive_insights/db
+cd ~/repos/gdrive-insights/gdrive_insights/db
 ipy models.py -i -- --create 1
 ```
 
