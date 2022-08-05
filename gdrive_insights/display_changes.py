@@ -220,7 +220,7 @@ def filter_files(df, keep=None):
         ignore_index=True,
     )
 
-    return view, forbidden_ids
+    return view
 
 
 def fetch_revisions(file_id: Optional[int] = None) -> List[Dict[str, Any]]:
