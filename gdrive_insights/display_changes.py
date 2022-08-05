@@ -212,7 +212,7 @@ def filter_pdf_files(df: pd.DataFrame, keep: Optional[int] = None) -> pd.DataFra
 
 
 def filter_files(df, keep=None):
-    view, forbidden_ids = pd.concat(
+    view = pd.concat(
         [
             df.pipe(filter_google_documents, keep=keep),
             df.pipe(filter_pdf_files, keep=keep),
@@ -305,9 +305,11 @@ def revisions_pipeline(
     Todo:
         - implement cache. save all revisions to sqlite
     """
-    view = df.pipe(fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache)
+    view, forbidden_ids = df.pipe(
+        fetch_revisions_over_files, progress=progress, use_sql_cache=use_sql_cache
+    )
 
-    return view
+    return view, forbidden_ids
 
 
 def fetch_files(saved_start_page_token, max_fetch=None) -> List[dict]:
@@ -473,7 +475,7 @@ if __name__ == "__main__":
     #     df = changes_to_pandas(changes)
 
     # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
-    view, forbidden_ids = filter_files(df, keep=None)
+    view = filter_files(df, keep=None)
     rv, fids = revisions_pipeline(view, use_sql_cache=False)
 
     if args.dryrun:
