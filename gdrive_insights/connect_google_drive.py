@@ -17,34 +17,10 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional
 
+import pandas as pd
 from googleapiclient import discovery
 from httplib2 import Http
 from oauth2client import client, file, tools
-
-
-def construct_file_path(fileId: str, fullPath="") -> Optional[str]:
-    """Construct file path.
-
-    Repeatedly calls
-        GET https://www.googleapis.com/drive/v3/files/[FileId]?fields=parents
-    till root node is found.
-
-    Reconstructs a file path
-    """
-    parent = DRIVE.files().get(fileId=fileId, fields="parents").execute()
-    name = DRIVE.files().get(fileId=fileId, fields="name").execute().get("name", None)
-    parent_id = parent.get("parents", None)
-    parent_id = parent_id[0] if parent_id is not None else None
-
-    if parent_id is not None:
-        print(f"{parent_id=:<40} {name=:<50} ")
-        fullPath = "/" + name + fullPath
-        return construct_file_path(parent_id, fullPath=fullPath)
-
-    print(f"{fullPath=}")
-
-    return fullPath
-
 
 SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 store = file.Storage("storage.json")

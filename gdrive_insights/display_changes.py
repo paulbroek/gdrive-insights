@@ -237,19 +237,10 @@ def fetch_revisions_over_files(
     df: pd.DataFrame, use_sql_cache=True, progress=True
 ) -> pd.DataFrame:
 
-    # df = df.copy()
-    # one-liner not possible when displaying progress
-    # df["nrevision"] = df["file_id"].map(lambda x: len(fetch_revisions(x)))
-
     logger.info(f"fetching revisions")
     if use_sql_cache:
         existing_ids: pd.DataFrame = pd.read_sql_query("SELECT id FROM revision; ", con)
 
-    # do async requests?
-    # file_id_to_revisions = {
-    #     file_id: fetch_revisions(file_id)
-    #     for file_id in tqdm(df.file_id.values, disable=not progress)
-    # }
     forbidden_ids = set()
     file_id_to_revisions = {}
     for file_id in tqdm(df[FILE_ID].values, disable=not progress):
@@ -277,16 +268,18 @@ def fetch_revisions_over_files(
     # save intermediary results to sqlite
     # bit ugly for now, but fetch unique (id, fileId) tuples, and only insert if tuple is new
     if use_sql_cache:
-        # first drop existing ids
-        new_rows = rev_df[~rev_df.id.isin(existing_ids.id)]
-        # save to sql
-        if not new_rows.empty:
-            new_rows.to_sql(
-                "revision", con, if_exists="append", index=False, index_label=False
-            )
-            logger.info(f"added {new_rows.shape[0]:,} rows to sqlite")
-        else:
-            logger.warning(f"no new rows to add")
+        # # first drop existing ids
+        # new_rows = rev_df[~rev_df.id.isin(existing_ids.id)]
+        # # save to sql
+        # if not new_rows.empty:
+        #     new_rows.to_sql(
+        #         "revision", con, if_exists="append", index=False, index_label=False
+        #     )
+        #     logger.info(f"added {new_rows.shape[0]:,} rows to sqlite")
+        # else:
+        #     logger.warning(f"no new rows to add")
+        raise NotImplementedError
+
 
     # df["nrevision"] = df["file_id"].map(file_id_to_revisions)
 
@@ -429,7 +422,13 @@ def revisions_data_analysis(
         .sort_values("count")
     ).reset_index()
     gb["last_min_first"] = gb["last_modified"] - gb["first_modified"]
-    merged = pd.merge(gb, changes_df[["id", "name"]], how="left", left_on="file_id", right_on='id')
+    merged = pd.merge(
+        gb,
+        changes_df[["id", "name", "mimeType"]],
+        how="left",
+        left_on="file_id",
+        right_on="id",
+    )
     # now you see that fileId with more than 1 revision are max 1 month old. so google only saves revisions for a month,
     # you cannot fetch them from longer ago, should fetch them daily to gather this data
     # only recent pdf files show a lot of revisions? why? is revision data deleted over time?

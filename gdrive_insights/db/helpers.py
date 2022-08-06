@@ -1,8 +1,10 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
+from typing import Any, Dict, Optional
 
 import gdrive_insights.config as config_dir
+import pandas as pd
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 
 from ..core.types import FileId, FileRec
@@ -29,10 +31,61 @@ async def create_many_items(asession, *args, **kwargs):
 def update_is_forbidden(file_id: str):
     """Update File.is_forbidden.
 
-    Remedy to deal with `Encountered 403 Forbidden with reason "insufficientFilePermissions"` 
+    Remedy to deal with `Encountered 403 Forbidden with reason "insufficientFilePermissions"`
     messages from Google Drive API
     """
     file = psession.query(File).filter(File.id == file_id).one_or_none()
     assert file is not None, f"create file first"
     file.is_forbidden = True
     return psession.commit()
+
+
+def construct_file_path(fileId: str, fullPath="") -> Optional[str]:
+    """Construct file path.
+
+    Repeatedly calls
+        GET https://www.googleapis.com/drive/v3/files/[FileId]?fields=parents
+    till root node is found.
+
+    Reconstructs a file path
+    """
+    parent = DRIVE.files().get(fileId=fileId, fields="parents").execute()
+    name = DRIVE.files().get(fileId=fileId, fields="name").execute().get("name", None)
+    parent_id = parent.get("parents", None)
+    parent_id = parent_id[0] if parent_id is not None else None
+
+    if parent_id is not None:
+        print(f"{parent_id=:<40} {name=:<50} ")
+        fullPath = "/" + name + fullPath
+        return construct_file_path(parent_id, fullPath=fullPath)
+
+    print(f"{fullPath=}")
+
+    return fullPath
+
+
+def map_files_to_path(df):
+
+    df = df.copy()
+    df["path"] = df["id"].map(construct_file_path)
+    return df
+
+
+def update_file_paths(df):
+    """Update file paths in db for a dataframe of files."""
+
+    assert "id" in df.columns
+    assert "path" in df.columns
+
+    # fetch files
+    df["file"] = df["id"].map(
+        lambda x: psession.query(File).filter(File.id == x).one_or_none()
+    )
+
+    # nmissing = df['file'].isna().sum()
+    # logger.info(f"{nmissing=:,}")
+
+    # update file_paths
+    # files = df['file'].to_list()
+
+    return df
