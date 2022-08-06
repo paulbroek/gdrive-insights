@@ -6,12 +6,10 @@ from typing import Any, Dict, Optional
 import gdrive_insights.config as config_dir
 import pandas as pd
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
+from sqlalchemy.future import select  # type: ignore[import]
 
 from ..core.types import FileId, FileRec
 from .models import Change, File, Revision
-
-# from sqlalchemy.future import select  # type: ignore[import]
-
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
@@ -65,7 +63,7 @@ def construct_file_path(fileId: str, fullPath="") -> Optional[str]:
 
 
 def map_files_to_path(df):
-
+    """Call `construct_file_path` on all `id` rows."""
     df = df.copy()
     df["path"] = df["id"].map(construct_file_path)
     return df
@@ -73,19 +71,29 @@ def map_files_to_path(df):
 
 def update_file_paths(df):
     """Update file paths in db for a dataframe of files."""
-
     assert "id" in df.columns
     assert "path" in df.columns
 
     # fetch files
-    df["file"] = df["id"].map(
-        lambda x: psession.query(File).filter(File.id == x).one_or_none()
+    ids = df.id.unique()
+    files_by_id = dict(
+        zip(
+            ids,
+            psession.execute(select(File).filter(File.id.in_(ids)))
+            .scalars()
+            .fetchall(),
+        )
     )
+    df["file"] = df["id"].map(files_by_id)
 
-    # nmissing = df['file'].isna().sum()
-    # logger.info(f"{nmissing=:,}")
+    nmissing = df["file"].isna().sum()
+    logger.info(f"{nmissing=:,}")
 
     # update file_paths
-    # files = df['file'].to_list()
+    file_and_path = df[["file", "path"]].to_records(index=False)
+    for file, path in file_and_path:
+        file.path = path
+
+    psession.commit()
 
     return df

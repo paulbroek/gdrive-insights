@@ -214,11 +214,14 @@ def filter_pdf_files(df: pd.DataFrame, keep: Optional[int] = None) -> pd.DataFra
 def filter_files(df, keep=None):
     view = pd.concat(
         [
-            df.pipe(filter_google_documents, keep=keep),
-            df.pipe(filter_pdf_files, keep=keep),
+            df.pipe(filter_google_documents),
+            df.pipe(filter_pdf_files),
         ],
         ignore_index=True,
     )
+
+    if keep is not None:
+        return view.tail(keep)
 
     return view
 
@@ -279,7 +282,6 @@ def fetch_revisions_over_files(
         # else:
         #     logger.warning(f"no new rows to add")
         raise NotImplementedError
-
 
     # df["nrevision"] = df["file_id"].map(file_id_to_revisions)
 
@@ -475,6 +477,8 @@ if __name__ == "__main__":
 
     # df_pdf = df[df.file_mimeType.str.endswith("pdf")].copy()
     view = filter_files(df, keep=None)
+
+    # todo: how to fetch only new revisions, or new files?
 
     if args.dryrun:
         sys.exit()

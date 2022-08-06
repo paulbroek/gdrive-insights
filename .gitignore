@@ -3,8 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# alembic versions
+# alembic versions, but do include the folder itself
 **/versions/*.py
+!**/versions/__init__.py
 postgres.cfg
 alembic.ini
 
