@@ -30,6 +30,33 @@ psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_
 psession = get_session(psql)()
 
 
+class pageToken(Base):
+    """Represent a pageToken, used when calling Google Drive API.
+
+    See:
+        https://developers.google.com/drive/api/v3/reference/revisions/list
+    """
+
+    __tablename__ = "page_token"
+    id = Column(Integer, primary_key=True)
+    table = Column(String, nullable=False)
+    value = Column(String, nullable=False)
+
+    created = Column(DateTime, server_default=func.now())  # current_timestamp()
+    updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # add this so that it can be accessed
+    __mapper_args__ = {"eager_defaults": True}
+
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+    def __repr__(self):
+        return "pageToken(id={}, table={}, value={})".format(
+            self.id, self.table, self.value
+        )
+
+
 class Revision(Base):
     """Represent a revision for a user or shared drive.
 
@@ -61,8 +88,8 @@ class Revision(Base):
 
     def modifiedAgo(self) -> str:
         res: str = ""
-        if self.last_scrape is not None:
-            res = timeago.format(self.last_scrape, datetime.utcnow())
+        if self.updated is not None:
+            res = timeago.format(self.updated, datetime.utcnow())
 
         return res
 

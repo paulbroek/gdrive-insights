@@ -463,10 +463,10 @@ if __name__ == "__main__":
         # start_page_token = df.page_token.max()
         # start_page_token = df.page_token.iloc[-1]
 
-    # if not args.dryrun:
-    #     changes = fetch_changes(
-    #         saved_start_page_token=start_page_token, max_fetch=args.nfetch
-    #     )
+    if not args.dryrun:
+        changes = fetch_changes(
+            saved_start_page_token=start_page_token, max_fetch=args.nfetch
+        )
 
     # append lines to existing dataset
     # if args.use_cache:
@@ -479,6 +479,7 @@ if __name__ == "__main__":
     view = filter_files(df, keep=None)
 
     # todo: how to fetch only new revisions, or new files?
+    # maybe changes includes this data, when fetching the last list using pageToken?
 
     if args.dryrun:
         sys.exit()
