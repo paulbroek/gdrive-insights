@@ -20,7 +20,9 @@ SELECT
     left(file.name, 40) AS tr_file_name,
     file."mimeType" AS file_type,
     max(revision.updated) AS last_update,
-    count(revision.id) AS nrevision
+    count(revision.id) AS nrevision,
+    file.id AS file_id,
+    left(file.path, 40) AS tr_file_path
 FROM
     file
     LEFT JOIN revision ON file.id = revision.file_id

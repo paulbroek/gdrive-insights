@@ -31,19 +31,19 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-import psycopg2
+import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
 from gdrive_insights.args import ArgParser
-from gdrive_insights.db.helpers import update_is_forbidden
+from gdrive_insights.db.helpers import (map_files_to_path, update_file_paths,
+                                        update_is_forbidden)
 from gdrive_insights.db.methods import methods as dm
 from gdrive_insights.db.models import psql
-from gdrive_insights.settings import CHANGES_FILE, REVISIONS_FILE
+from gdrive_insights.settings import CHANGES_FILE, FILES_FILE, REVISIONS_FILE
 from googleapiclient.discovery import build  # type: ignore[import]
 from googleapiclient.errors import HttpError  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
 from rarc_utils.log import setup_logger
-from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
-                                        load_config)
+from rarc_utils.sqlalchemy_base import get_async_session, load_config
 from tqdm import tqdm  # type: ignore[import]
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
@@ -55,15 +55,13 @@ logger = setup_logger(
     cmdLevel=logging.INFO, saveFile=0, savePandas=0, jsonLogger=0, color=1, fmt=log_fmt
 )
 
-# dotenv.load_dotenv()
-
 SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 UNNAMED = "Naamloos document"
 GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
 PDF_FILETYPE = "application/pdf"
 FILE_ID = "id"
 
-# todo: connect to postgresql connection
+# connect to postgresql
 con = psycopg2.connect(
     database=psql.db, user=psql.user, password=psql.passwd, host=psql.host, port="5432"
 )
@@ -187,10 +185,6 @@ def filter_google_documents(
     - Get all google docs files that do not have name=Unnamed, and count the number revisions
        These represent the actual number of changes to the document
     """
-    # view = df[
-    #     (df.file_mimeType == GOOGLE_DOCS_DOCUMENT) & (df.file_name != UNNAMED)
-    # ].copy()
-
     view = df.query(
         "mimeType == '{}' & name != '{}'".format(GOOGLE_DOCUMENT_FILETYPE, UNNAMED)
     ).copy()

@@ -15,12 +15,9 @@ See Google Drive API endpoints:
 
 from __future__ import print_function
 
-from typing import Any, Dict, Optional
-
-import pandas as pd
-from googleapiclient import discovery
-from httplib2 import Http
-from oauth2client import client, file, tools
+from googleapiclient import discovery  # type: ignore[import]
+from httplib2 import Http  # type: ignore[import]
+from oauth2client import client, file, tools  # type: ignore[import]
 
 SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 store = file.Storage("storage.json")

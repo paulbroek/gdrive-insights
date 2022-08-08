@@ -2,6 +2,10 @@
 
 using:
     https://docs.sqlalchemy.org/en/14/orm/extensions/asyncio.html 
+
+frequently used queries:
+    select * from revisions_by_file limit 15;
+    select * from revisions_by_file where file_type = 'application/pdf' limit 15;
 """
 
 import argparse

@@ -1,6 +1,5 @@
 """Settings.py, general settings for gdrive-insights."""
 
-import os
 from pathlib import Path
 
 # todo: how to  load .env file from site-packages dir
