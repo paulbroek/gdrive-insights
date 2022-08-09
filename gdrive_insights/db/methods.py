@@ -1,10 +1,11 @@
-from typing import Dict, List, Tuple
+"""methods.py, implements database methods."""
+from typing import Dict
 
 import pandas as pd
 
 from ..core.types import FileId, FileRec, TableTypes
 from .helpers import create_many_items
-from .models import Change, File, Revision
+from .models import File, Revision
 
 
 class methods:
@@ -24,7 +25,7 @@ class methods:
             File,
             recs,
             nameAttr="id",
-            # returnExisting=returnExisting,
+            returnExisting=returnExisting,
             mergeExisting=True,
             autobulk=autobulk,
             commit=True,
@@ -46,7 +47,7 @@ class methods:
             Revision,
             recs,
             nameAttr="id",
-            # returnExisting=returnExisting,
+            returnExisting=returnExisting,
             mergeExisting=True,
             autobulk=autobulk,
             commit=True,

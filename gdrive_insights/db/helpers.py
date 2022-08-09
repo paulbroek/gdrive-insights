@@ -1,6 +1,7 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
+from subprocess import Popen
 
 import gdrive_insights.config as config_dir
 import pandas as pd
@@ -75,11 +76,11 @@ def construct_file_path(
 def map_files_to_path(df: pd.DataFrame, drive: discovery.Resource) -> pd.DataFrame:
     """Call `construct_file_path` on all `id` rows."""
     df = df.copy()
-    # df["path"] = df["id"].map(lambda x: construct_file_path(x, drive=drive))
-    df["path"] = df[["id", "name"]].apply(
-        lambda row: construct_file_path(row["id"], fileName=row["name"], drive=drive),
-        axis=1,
-    )
+    df["path"] = df["id"].map(lambda x: construct_file_path(x, drive=drive))
+    # df["path"] = df[["id", "name"]].apply(
+    #     lambda row: construct_file_path(row["id"], fileName=row["name"], drive=drive),
+    #     axis=1,
+    # )
     return df
 
 
@@ -108,3 +109,57 @@ def update_file_paths(df: pd.DataFrame) -> pd.DataFrame:
     psession.commit()
 
     return df
+
+
+def get_pdfs(con, n=5) -> pd.DataFrame:
+    """Open frequently opened pdf files."""
+    q = """
+    REFRESH MATERIALIZED VIEW revisions_by_file;
+    select * from revisions_by_file where file_type = 'application/pdf' limit {};
+    """.format(
+        n
+    )
+
+    df: pd.DataFrame = pd.read_sql(q, con)
+
+    return df
+
+
+def open_pdf(cmd_args):
+
+    # todo: opening with contextmanager makes the files harder to close by pressing Ctr+C
+    with Popen(cmd_args) as p:
+        print(f"run: {cmd_args}")
+        # output = p.stdout.read() 
+        p.wait()
+        # return output
+
+
+def open_pdfs(df: pd.DataFrame, pfx=None, ctxmgr=False) -> None:
+    """Open pdf files with pdf viewer.
+
+    Usage:
+        open_pdfs(get_pdfs(con, n=5), pfx='/home/paul/gdrive')
+    """
+    assert pfx is not None
+    df["file_path"] = pfx + df["file_path"]
+    print(f"{df.shape=}")
+
+    # base_command = "atril "
+    base_command = "atril"
+    # base_command = ""
+    # commands = (base_command + df["file_path"].apply(lambda x: "'" + x + "'")).to_list()
+    # paths = df["file_path"].apply(lambda x: "'" + x + "'").to_list()
+    paths = df["file_path"].to_list()
+    print(f"{paths[:2]=}")
+
+    # procs = [Popen(i) for i in commands]
+
+    if ctxmgr:
+        for c in paths:
+            open_pdf([base_command, c])
+
+    else:
+        procs = [Popen([base_command, i]) for i in paths]
+        for p in procs:
+            p.wait()

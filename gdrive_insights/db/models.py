@@ -5,14 +5,23 @@ using:
 
 frequently used queries:
     select * from revisions_by_file limit 15;
-    select * from revisions_by_file where file_type = 'application/pdf' limit 15;
+    select 
+        left(file_name, 40) AS tr_file_name,
+        left(file_path, 40) AS tr_file_path,
+        nrevision,
+        file_id
+    from revisions_by_file where file_type = 'application/pdf' limit 15;
+
+
 """
 
 import argparse
 import asyncio
 import logging
+import subprocess
 import uuid
 from datetime import datetime
+from typing import Optional
 
 import timeago  # type: ignore[import]
 from gdrive_insights import config as config_dir
@@ -20,7 +29,7 @@ from rarc_utils.log import loggingLevelNames, set_log_level, setup_logger
 from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
                                         get_session, load_config)
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        UniqueConstraint, func)
+                        func)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -130,6 +139,33 @@ class File(Base):
             self.name,
             self.created,
         )
+
+    def path_with(self, sfx: Optional[str] = None) -> str:
+        if sfx is None:
+            return self.path
+
+        return sfx + self.path
+
+    def open_pdf(self, sfx: Optional[str] = None):
+        """Open pdf file using your favourite pdf viewer."""
+        full_path = self.path_with(sfx)
+        cmd = "atril {}".format(full_path)
+        # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
+        result = subprocess.run(["atril", cmd])
+
+    @classmethod
+    def open_pdfs(cls):
+        pass
+
+    # def escape_file_path(self) -> Optional[str]:
+    #     """Espace file path.
+
+    #     To open files in linux
+    #     """
+    #     if self.path is None:
+    #         return None
+
+    #     return self.path.replace(" ", "/\ ").replace("(", "/(").replace(")", "/)")
 
 
 class Change(Base):
