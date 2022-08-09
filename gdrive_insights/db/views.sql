@@ -32,3 +32,22 @@ ORDER BY
 LIMIT
     1000 WITH DATA;
 
+DROP MATERIALIZED VIEW vw_file_sessions;
+CREATE MATERIALIZED VIEW vw_file_sessions AS
+SELECT
+    file.name AS file_name,
+    file."mimeType" AS file_type,
+    max(revision.updated) AS last_update,
+    count(revision.id) AS nrevision,
+    file.id AS file_id,
+    file.path as file_path
+FROM
+    file_session_association AS fsa
+    LEFT JOIN file ON file.id = fsa.file_id
+    LEFT JOIN file_session ON file_session.id = fsa.file_session_id
+GROUP BY file.id
+ORDER BY
+    nused DESC
+LIMIT
+    1000 WITH DATA;
+

@@ -29,10 +29,11 @@ from rarc_utils.log import loggingLevelNames, set_log_level, setup_logger
 from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
                                         get_session, load_config)
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        func)
+                        UniqueConstraint, func)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from sqlalchemy.schema import Table
 
 LOG_FMT = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # title
 
@@ -41,6 +42,43 @@ Base = declarative_base()
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
+
+
+file_session_association = Table(
+    "file_session_association",
+    Base.metadata,
+    Column("file_session_id", Integer, ForeignKey("file_session.id")),
+    Column("file_id", String, ForeignKey("file.id")),
+    UniqueConstraint("file_session_id", "file_id"),
+)
+
+
+class fileSession(Base):
+    """Save metadata of recently opened files."""
+
+    __tablename__ = "file_session"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=True)
+
+    files = relationship(
+        "File", uselist=True, secondary=file_session_association, lazy="selectin"
+    )
+
+    nused = Column(Integer, nullable=False, default=0)
+
+    created = Column(DateTime, server_default=func.now())  # current_timestamp()
+    updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # add this so that it can be accessed
+    __mapper_args__ = {"eager_defaults": True}
+
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+    def __repr__(self):
+        return "fileSession(id={}, name={}, nused={}, nfile={})".format(
+            self.id, self.name, self.nused, len(self.files)
+        )
 
 
 class pageToken(Base):

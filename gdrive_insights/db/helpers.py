@@ -1,7 +1,9 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
+from collections import defaultdict
 from subprocess import Popen
+from typing import Dict, List, Optional, Set
 
 import gdrive_insights.config as config_dir
 import pandas as pd
@@ -9,7 +11,7 @@ from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy.future import select  # type: ignore[import]
 
-from .models import File
+from .models import File, fileSession
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
@@ -84,17 +86,24 @@ def map_files_to_path(df: pd.DataFrame, drive: discovery.Resource) -> pd.DataFra
     return df
 
 
+def fetch_files_over_df(df: pd.DataFrame, idCol="id") -> pd.DataFrame:
+    """Fetch files over all dataframe rows."""
+    assert idCol in df.columns, f"{idCol=} not in {df.columns=}"
+    ids = df[idCol].unique()
+    files = psession.execute(select(File).filter(File.id.in_(ids))).scalars().fetchall()
+    files_by_id = dict(zip((f.id for f in files), files))
+    df["file"] = df[idCol].map(files_by_id)
+
+    return df
+
+
 def update_file_paths(df: pd.DataFrame) -> pd.DataFrame:
     """Update file paths in db for a dataframe of files."""
     assert "id" in df.columns
     assert "path" in df.columns
 
     # fetch files
-    ids = df.id.unique()
-    files = psession.execute(select(File).filter(File.id.in_(ids))).scalars().fetchall()
-    files_by_id = dict(zip((f.id for f in files), files))
-    df["file"] = df["id"].map(files_by_id)
-
+    df = fetch_files_over_df(df)
     nmissing = df["file"].isna().sum()
     logger.info(f"{nmissing=:,}")
 
@@ -111,11 +120,52 @@ def update_file_paths(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def get_sessions(con, n=8) -> pd.DataFrame:
+    """Get fileSessions from db."""
+    q = """
+    SELECT * FROM file_session LIMIT {};
+    """.format(
+        n
+    )
+    df: pd.DataFrame = pd.read_sql(q, con)
+
+    return df
+
+
+def find_session_match(con, file_ids: List[str]) -> Optional[fileSession]:
+    """Find session match.
+
+    Query association table on union of session_id and file_ids,
+    if non-empty, return the match
+    """
+    fmt_ids = "'{0}'".format("', '".join(file_ids))
+    q = """SELECT * FROM file_session_association WHERE file_id IN ({});""".format(
+        fmt_ids
+    )
+    res = psession.execute(q).fetchall()
+    df = pd.DataFrame(res)
+
+    sdf = df.groupby('file_session_id')['file_id'].count().to_frame('nfile')    
+    # by_session_id: Dict[int, Set] = defaultdict(set)
+    # for sid, fid in res:
+    #     by_session_id[sid].add(fid)
+
+    # sdf = pd.DataFrame(by_session_id.items(), columns=['sid','fids'])
+
+    view = sdf[sdf.nfile == len(file_ids)]
+
+    if not view.empty:
+        fs_ix = view.head(1).index[0]
+        fs = psession.execute(select(fileSession).filter(fileSession.id == fs_ix)).scalars().fetchall()
+
+        return fs
+
+
 def get_pdfs(con, n=5) -> pd.DataFrame:
     """Open frequently opened pdf files."""
+    con.cursor().execute("REFRESH MATERIALIZED VIEW revisions_by_file;")
     q = """
-    REFRESH MATERIALIZED VIEW revisions_by_file;
-    select * from revisions_by_file where file_type = 'application/pdf' limit {};
+    SELECT * from revisions_by_file where file_type = 'application/pdf' limit {};
     """.format(
         n
     )
@@ -125,12 +175,29 @@ def get_pdfs(con, n=5) -> pd.DataFrame:
     return df
 
 
+def get_pdfs_manual(con, n=30) -> pd.DataFrame:
+    """Get pdfs by manually selecting which items to keep."""
+    df = get_pdfs(con, n=n)
+
+    view = df[["file_name", "last_update", "nrevision", "file_id"]].copy()
+    input_ = input(
+        f"{view.to_string()}\n\nselect indices of rows to keep, separated by spaces: "
+    )
+
+    rows = map(lambda x: int(x) if len(x) > 0 else None, input_.split(" "))
+    ixs: List[int] = list(filter(lambda x: x is not None, rows))
+
+    # todo: if files exist in session, use that session
+
+    return df.iloc[ixs].sort_index()
+
+
 def open_pdf(cmd_args):
 
     # todo: opening with contextmanager makes the files harder to close by pressing Ctr+C
     with Popen(cmd_args) as p:
         print(f"run: {cmd_args}")
-        # output = p.stdout.read() 
+        # output = p.stdout.read()
         p.wait()
         # return output
 
@@ -140,6 +207,12 @@ def open_pdfs(df: pd.DataFrame, pfx=None, ctxmgr=False) -> None:
 
     Usage:
         open_pdfs(get_pdfs(con, n=5), pfx='/home/paul/gdrive')
+
+    Also save default settings in Atril, by clicking:
+        Save Current Settings as Default
+
+    Manually through command line is also available:
+        gsettings set org.mate.Atril.Default continuous false
     """
     assert pfx is not None
     df["file_path"] = pfx + df["file_path"]
@@ -151,9 +224,18 @@ def open_pdfs(df: pd.DataFrame, pfx=None, ctxmgr=False) -> None:
     # commands = (base_command + df["file_path"].apply(lambda x: "'" + x + "'")).to_list()
     # paths = df["file_path"].apply(lambda x: "'" + x + "'").to_list()
     paths = df["file_path"].to_list()
-    print(f"{paths[:2]=}")
+    # print(f"{paths[:2]=}")
 
     # procs = [Popen(i) for i in commands]
+
+    # fetch file metadata
+    df = fetch_files_over_df(df, idCol="file_id")
+
+    # todo: save file_session to db
+    # how to get or create existing sessions
+    fs = fileSession(files=df.file.to_list())
+    psession.add(fs)
+    psession.commit()
 
     if ctxmgr:
         for c in paths:
