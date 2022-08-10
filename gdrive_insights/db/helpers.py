@@ -1,9 +1,8 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
-from collections import defaultdict
 from subprocess import Popen
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 import gdrive_insights.config as config_dir
 import pandas as pd
@@ -132,47 +131,93 @@ def get_sessions(con, n=8) -> pd.DataFrame:
     return df
 
 
-def find_session_match(con, file_ids: List[str]) -> Optional[fileSession]:
+def get_session_by_input(n=20) -> Optional[fileSession]:
+    """Get file_session by user input."""
+    psession.execute("REFRESH MATERIALIZED VIEW vw_file_sessions;")
+    q = """SELECT * FROM vw_file_sessions LIMIT {};""".format(n)
+    res = psession.execute(q).fetchall()
+    df = pd.DataFrame(res)
+
+    fs: Optional[fileSession] = None
+
+    if not df.empty:
+        df = df.set_index("sid")
+
+        input_ = input(f"{df.to_string()}\n\nselect index of session to use: ")
+
+        fs_ix = int(input_)
+        fs = (
+            psession.execute(select(fileSession).filter(fileSession.id == fs_ix))
+            .scalars()
+            .one_or_none()
+        )
+        if fs is not None:
+            logger.info(f"found a session match, {fs=}")
+
+    return fs
+
+
+def get_session_by_file_ids(file_ids: List[str]) -> Optional[fileSession]:
     """Find session match.
 
     Query association table on union of session_id and file_ids,
     if non-empty, return the match
     """
-    fmt_ids = "'{0}'".format("', '".join(file_ids))
+    fmt_ids: str = "'{0}'".format("', '".join(file_ids))
     q = """SELECT * FROM file_session_association WHERE file_id IN ({});""".format(
         fmt_ids
     )
     res = psession.execute(q).fetchall()
     df = pd.DataFrame(res)
 
-    sdf = df.groupby('file_session_id')['file_id'].count().to_frame('nfile')    
-    # by_session_id: Dict[int, Set] = defaultdict(set)
-    # for sid, fid in res:
-    #     by_session_id[sid].add(fid)
+    fs: Optional[fileSession] = None
+    view: pd.DataFrame = pd.DataFrame()
 
-    # sdf = pd.DataFrame(by_session_id.items(), columns=['sid','fids'])
-
-    view = sdf[sdf.nfile == len(file_ids)]
+    if not df.empty:
+        sdf: pd.DataFrame = (
+            df.groupby("file_session_id")["file_id"].count().to_frame("nfile")
+        )
+        view = sdf[sdf.nfile == len(file_ids)]
 
     if not view.empty:
-        fs_ix = view.head(1).index[0]
-        fs = psession.execute(select(fileSession).filter(fileSession.id == fs_ix)).scalars().fetchall()
+        fs_ix: int = int(view.index[0])
+        fs = (
+            psession.execute(select(fileSession).filter(fileSession.id == fs_ix))
+            .scalars()
+            .one_or_none()
+        )
+        if fs is not None:
+            logger.info(f"found a session match, {fs=}")
 
-        return fs
+    return fs
 
 
-def get_pdfs(con, n=5) -> pd.DataFrame:
+def get_pdfs(con, file_ids: Optional[List[str]] = None, n=5) -> pd.DataFrame:
     """Open frequently opened pdf files."""
     con.cursor().execute("REFRESH MATERIALIZED VIEW revisions_by_file;")
     q = """
-    SELECT * from revisions_by_file where file_type = 'application/pdf' limit {};
-    """.format(
-        n
-    )
+    SELECT * from revisions_by_file where file_type = 'application/pdf'
+    """
+    if file_ids is not None:
+        fmt_ids: str = "'{0}'".format("', '".join(file_ids))
+        q += """ AND file_id IN ({}) """.format(fmt_ids)
+
+    q += """LIMIT {}""".format(n)
 
     df: pd.DataFrame = pd.read_sql(q, con)
 
     return df
+
+
+def get_file_ids_of_session(fs_id: int) -> List[str]:
+    """Get pdfs by file_session."""
+    q = """SELECT file_id FROM file_session_association WHERE file_session_id = {};""".format(
+        fs_id
+    )
+    res = psession.execute(q).scalars().fetchall()
+    # df = pd.DataFrame(res)
+
+    return list(res)
 
 
 def get_pdfs_manual(con, n=30) -> pd.DataFrame:
@@ -187,13 +232,11 @@ def get_pdfs_manual(con, n=30) -> pd.DataFrame:
     rows = map(lambda x: int(x) if len(x) > 0 else None, input_.split(" "))
     ixs: List[int] = list(filter(lambda x: x is not None, rows))
 
-    # todo: if files exist in session, use that session
-
     return df.iloc[ixs].sort_index()
 
 
-def open_pdf(cmd_args):
-
+def popen_file(cmd_args):
+    """Open file using context manager."""
     # todo: opening with contextmanager makes the files harder to close by pressing Ctr+C
     with Popen(cmd_args) as p:
         print(f"run: {cmd_args}")
@@ -202,13 +245,13 @@ def open_pdf(cmd_args):
         # return output
 
 
-def open_pdfs(df: pd.DataFrame, pfx=None, ctxmgr=False) -> None:
+def open_pdfs(df: pd.DataFrame, fs=None, pfx=None, ctxmgr=False) -> None:
     """Open pdf files with pdf viewer.
 
     Usage:
         open_pdfs(get_pdfs(con, n=5), pfx='/home/paul/gdrive')
 
-    Also save default settings in Atril, by clicking:
+    Also save default settings in Evince, by clicking:
         Save Current Settings as Default
 
     Manually through command line is also available:
@@ -218,28 +261,32 @@ def open_pdfs(df: pd.DataFrame, pfx=None, ctxmgr=False) -> None:
     df["file_path"] = pfx + df["file_path"]
     print(f"{df.shape=}")
 
-    # base_command = "atril "
-    base_command = "atril"
-    # base_command = ""
-    # commands = (base_command + df["file_path"].apply(lambda x: "'" + x + "'")).to_list()
-    # paths = df["file_path"].apply(lambda x: "'" + x + "'").to_list()
+    # base_command = "atril"
+    base_command = "evince"
+
     paths = df["file_path"].to_list()
     # print(f"{paths[:2]=}")
-
-    # procs = [Popen(i) for i in commands]
 
     # fetch file metadata
     df = fetch_files_over_df(df, idCol="file_id")
 
-    # todo: save file_session to db
-    # how to get or create existing sessions
-    fs = fileSession(files=df.file.to_list())
-    psession.add(fs)
+    # find matching file_session
+    if fs is None:
+        fs = get_session_by_file_ids(df.file_id.to_list())
+
+    # create new file_session
+    if fs is None:
+        fs = fileSession(files=df.file.to_list())
+        psession.add(fs)
+        psession.commit()
+
+    fs.nused += 1
     psession.commit()
+    psession.close()
 
     if ctxmgr:
         for c in paths:
-            open_pdf([base_command, c])
+            popen_file([base_command, c])
 
     else:
         procs = [Popen([base_command, i]) for i in paths]

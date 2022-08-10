@@ -35,19 +35,18 @@ LIMIT
 DROP MATERIALIZED VIEW vw_file_sessions;
 CREATE MATERIALIZED VIEW vw_file_sessions AS
 SELECT
-    file.name AS file_name,
-    file."mimeType" AS file_type,
-    max(revision.updated) AS last_update,
-    count(revision.id) AS nrevision,
-    file.id AS file_id,
-    file.path as file_path
+    file_session.id AS sid,
+    count(file.id) AS nfile,
+    file_session.nused AS nused,
+    file_session.updated AS last_updated,
+    string_agg(left(file.name, 40), ', ') AS file_name_agg
 FROM
     file_session_association AS fsa
     LEFT JOIN file ON file.id = fsa.file_id
     LEFT JOIN file_session ON file_session.id = fsa.file_session_id
-GROUP BY file.id
+GROUP BY file_session.id
 ORDER BY
-    nused DESC
+    nused DESC, last_updated DESC
 LIMIT
     1000 WITH DATA;
 

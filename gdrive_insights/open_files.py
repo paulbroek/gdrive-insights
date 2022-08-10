@@ -1,6 +1,10 @@
 """open_files.py.
 
-Open last session of files
+Open last session of files.
+
+Usage:
+    ipy open_files.py -i -- -m session
+    ipy open_files.py -i -- -m file
 """
 import argparse
 import logging
@@ -9,9 +13,9 @@ from enum import Enum
 
 import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
-from gdrive_insights.db.helpers import (get_pdfs, get_pdfs_manual,
-                                        get_sessions, open_pdfs)
-from gdrive_insights.db.models import fileSession
+from gdrive_insights.db.helpers import (get_file_ids_of_session, get_pdfs,
+                                        get_pdfs_manual, get_session_by_input,
+                                        open_pdfs)
 from rarc_utils.log import setup_logger
 from rarc_utils.sqlalchemy_base import load_config
 
@@ -75,16 +79,21 @@ if __name__ == "__main__":
     if args.dryrun:
         sys.exit()
 
+    fs = None
+
     if mode == programMode.FILE:
         # pdfs = get_pdfs(con, n=args.n)
         pdfs = get_pdfs_manual(con, n=25)
 
     elif mode == programMode.SESSION:
-        sessions = get_sessions(con, n=10)
+        fs = get_session_by_input(n=20)
+        file_ids = get_file_ids_of_session(fs.id)
+        print(f"{file_ids=}")
+        pdfs = get_pdfs(con, file_ids=file_ids)
 
         # let user select session
 
     else:
         raise Exception(f"Invalid programMode: {msg}")
 
-    open_pdfs(pdfs, pfx="/home/paul/gdrive", ctxmgr=False)
+    open_pdfs(pdfs, fs=fs, pfx="/home/paul/gdrive", ctxmgr=False)
