@@ -41,16 +41,42 @@ def update_is_forbidden(file_id: str):
     messages from Google Drive API
     """
     file = psession.query(File).filter(File.id == file_id).one_or_none()
-    assert file is not None, f"create file first"
+    assert file is not None, "create file first"
     file.is_forbidden = True
     return psession.commit()
 
 
-def filter_book(df):
-    return df[df.path.str.startswith("/Books")].copy()
+def update_property_for_file(df: pd.DataFrame) -> None:
+    """Update property for File.
+
+    Match a file with property of other dataset
+    Interactive
+
+    Usage:
+        from gdrive_insights.db.helpers import fetch_files_over_df, update_property_for_file
+        df = pd.read_feather("data/df_book.feather")
+        df = fetch_files_over_df(df)
+        update_property_for_file(df)
+    """
+    for ix, row in df[
+        ["file", "filename", "bm_title", "bm_author_name", "bm_book_id"]
+    ].iterrows():
+        print(f"\n{ix}/{len(df)}")
+        input_ = input(
+            "{filename}\nmatches\n{bm_title} - {bm_author_name}\n? type `y`: ".format(
+                **row
+            )
+        )
+        if input_ == "y":
+            row["file"].book_id = row["bm_book_id"]
+            psession.commit()
 
 
-def find_book(query, timeout=10):
+def filter_book(df: pd.DataFrame) -> pd.DataFrame:
+    return df[df.path.str.startswith("/Books")].reset_index()
+
+
+def find_book(query, timeout=10) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     try:
         res = requests.post(
@@ -79,7 +105,7 @@ def match_filepath_to_book(df: pd.DataFrame) -> pd.DataFrame:
 
     """
     df["filename"] = (
-        df.path.str.replace("\(z-lib.org\)", "")
+        df.path.str.replace(r"\(z-lib.org\)", "")
         .str.replace(".pdf", "")
         .str.split("/")
         .map(lambda x: x[-1])
@@ -89,11 +115,6 @@ def match_filepath_to_book(df: pd.DataFrame) -> pd.DataFrame:
     df["best_match"] = df["api_response"].map(
         lambda x: x[0] if isinstance(x, list) else {}
     )
-    # df["best_match_title"] = df["best_match"].map(lambda x: x.get("title", None))
-    # df["best_match_author_name"] = df["best_match"].map(
-    #     lambda x: x.get("author_name", None)
-    # )
-    # df["best_match_lvstein"] = df["best_match"].map(lambda x: x.get("lvstein", None))
     df = df.pipe(unnest_col, pfxCol="best_match", renameColAs="bm")
     df["nitem"] = df["api_response"].map(len)
 
@@ -258,26 +279,26 @@ def get_session_by_file_ids(file_ids: List[str]) -> Optional[fileSession]:
 def get_pdfs(con, file_ids: Optional[List[str]] = None, n=5) -> pd.DataFrame:
     """Open frequently opened pdf files."""
     con.cursor().execute("REFRESH MATERIALIZED VIEW revisions_by_file;")
-    q = """
+    query = """
     SELECT * from revisions_by_file where file_type = 'application/pdf'
     """
     if file_ids is not None:
         fmt_ids: str = "'{0}'".format("', '".join(file_ids))
-        q += """ AND file_id IN ({}) """.format(fmt_ids)
+        query += """ AND file_id IN ({}) """.format(fmt_ids)
 
-    q += """LIMIT {}""".format(n)
+    query += """LIMIT {}""".format(n)
 
-    df: pd.DataFrame = pd.read_sql(q, con)
+    df: pd.DataFrame = pd.read_sql(query, con)
 
     return df
 
 
 def get_file_ids_of_session(fs_id: int) -> List[str]:
     """Get pdfs by file_session."""
-    q = """SELECT file_id FROM file_session_association WHERE file_session_id = {};""".format(
+    query = """SELECT file_id FROM file_session_association WHERE file_session_id = {};""".format(
         fs_id
     )
-    res = psession.execute(q).scalars().fetchall()
+    res = psession.execute(query).scalars().fetchall()
     # df = pd.DataFrame(res)
 
     return list(res)
