@@ -38,15 +38,17 @@ SELECT
     file_session.id AS sid,
     count(file.id) AS nfile,
     file_session.nused AS nused,
-    file_session.updated AS last_updated,
-    string_agg(left(file.name, 40), ', ') AS file_name_agg
+    date_trunc('seconds', file_session.updated) AS last_updated,
+    -- string_agg(left(file.name, ROUND(160/nfile)), ', ') AS file_name_agg
+    string_agg(left(file.name, 30), ', ') AS file_name_agg
 FROM
     file_session_association AS fsa
     LEFT JOIN file ON file.id = fsa.file_id
     LEFT JOIN file_session ON file_session.id = fsa.file_session_id
 GROUP BY file_session.id
 ORDER BY
-    nused DESC, last_updated DESC
+    -- nused DESC, last_updated DESC
+    last_updated DESC
 LIMIT
     1000 WITH DATA;
 

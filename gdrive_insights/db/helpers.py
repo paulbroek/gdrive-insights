@@ -2,20 +2,28 @@
 
 import logging
 from subprocess import Popen
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-import gdrive_insights.config as config_dir
 import pandas as pd
+import requests
 from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy.future import select  # type: ignore[import]
+from tqdm import tqdm  # type: ignore[import]
 
+import gdrive_insights.config as config_dir
+
+from ..core.utils import unnest_col
+from ..settings import BOOK_EXPLORER_API_URL
 from .models import File, fileSession
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
 
 logger = logging.getLogger(__name__)
+
+# use tqdm with df.map()
+tqdm.pandas()
 
 
 async def create_many_items(asession, *args, **kwargs):
@@ -36,6 +44,60 @@ def update_is_forbidden(file_id: str):
     assert file is not None, f"create file first"
     file.is_forbidden = True
     return psession.commit()
+
+
+def filter_book(df):
+    return df[df.path.str.startswith("/Books")].copy()
+
+
+def find_book(query, timeout=10):
+    items: List[Dict[str, Any]] = []
+    try:
+        res = requests.post(
+            BOOK_EXPLORER_API_URL + "/find_book", json={"query": query}, timeout=timeout
+        )
+        items = res.json()
+    except ConnectionError as e:
+        logger.error(f"{e=!r}")
+        return items
+
+    if len(items) == 0:
+        logger.warning(f"no results for {query=}")
+
+    return items
+
+
+def match_filepath_to_book(df: pd.DataFrame) -> pd.DataFrame:
+    """Match file path to book.
+
+    Call book explorer api, to find fuzzy title-author_name match
+
+    Usage:
+        df_book = df.pipe(filter_book)
+        df_book = match_filepath_to_book(df_book.head(20))
+        df_book[df_book.filter(regex=r"bm.+").columns | ["filename"]].head(20)
+
+    """
+    df["filename"] = (
+        df.path.str.replace("\(z-lib.org\)", "")
+        .str.replace(".pdf", "")
+        .str.split("/")
+        .map(lambda x: x[-1])
+        .str.strip()
+    )
+    df["api_response"] = df["filename"].progress_map(find_book)
+    df["best_match"] = df["api_response"].map(
+        lambda x: x[0] if isinstance(x, list) else {}
+    )
+    # df["best_match_title"] = df["best_match"].map(lambda x: x.get("title", None))
+    # df["best_match_author_name"] = df["best_match"].map(
+    #     lambda x: x.get("author_name", None)
+    # )
+    # df["best_match_lvstein"] = df["best_match"].map(lambda x: x.get("lvstein", None))
+    df = df.pipe(unnest_col, pfxCol="best_match", renameColAs="bm")
+    df["nitem"] = df["api_response"].map(len)
+
+    return df
 
 
 def construct_file_path(
@@ -142,6 +204,7 @@ def get_session_by_input(n=20) -> Optional[fileSession]:
 
     if not df.empty:
         df = df.set_index("sid")
+        # todo: display file_name_agg with one file per line
 
         input_ = input(f"{df.to_string()}\n\nselect index of session to use: ")
 
@@ -276,6 +339,7 @@ def open_pdfs(df: pd.DataFrame, fs=None, pfx=None, ctxmgr=False) -> None:
 
     # create new file_session
     if fs is None:
+        logger.info(f"creating new fileSession")
         fs = fileSession(files=df.file.to_list())
         psession.add(fs)
         psession.commit()

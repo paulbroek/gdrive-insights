@@ -9,3 +9,5 @@ streamlit
 timeago
 pandas
 oauth2client
+requests
+types-requests

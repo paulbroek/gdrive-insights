@@ -14,3 +14,5 @@ DATA_DIR = REPO_DIR / "data"
 CHANGES_FILE = DATA_DIR / "changes.feather"
 FILES_FILE = DATA_DIR / "files.feather"
 REVISIONS_FILE = DATA_DIR / "revisions.feather"
+
+BOOK_EXPLORER_API_URL = "http://77.249.149.174:3002"
