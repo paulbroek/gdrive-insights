@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import Optional
 
 import timeago  # type: ignore[import]
+from gdrive_insights import config as config_dir
 from rarc_utils.log import loggingLevelNames, set_log_level, setup_logger
 from rarc_utils.sqlalchemy_base import (async_main, get_async_session,
                                         get_session, load_config)
@@ -33,8 +34,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Table
-
-from gdrive_insights import config as config_dir
 
 LOG_FMT = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # title
 
@@ -163,6 +162,7 @@ class File(Base):
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
     path = Column(String)
 
+    did_inspect = Column(Boolean, default=False, nullable=False)
     book_id = Column(Integer, nullable=True)
 
     is_forbidden = Column(Boolean, default=False, nullable=False)

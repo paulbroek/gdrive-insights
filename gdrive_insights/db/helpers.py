@@ -4,16 +4,15 @@ import logging
 from subprocess import Popen
 from typing import Any, Dict, List, Optional
 
+import gdrive_insights.config as config_dir
 import pandas as pd
 import requests
 from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy.future import select  # type: ignore[import]
 from tqdm import tqdm  # type: ignore[import]
+from typing_extensions import TypeGuard
 
-import gdrive_insights.config as config_dir
-
-from ..core.utils import unnest_col
 from ..settings import BOOK_EXPLORER_API_URL
 from .models import File, fileSession
 
@@ -34,7 +33,7 @@ async def create_many_items(asession, *args, **kwargs):
     return items
 
 
-def update_is_forbidden(file_id: str):
+def update_is_forbidden(file_id: str) -> None:
     """Update File.is_forbidden.
 
     Remedy to deal with `Encountered 403 Forbidden with reason "insufficientFilePermissions"`
@@ -43,86 +42,15 @@ def update_is_forbidden(file_id: str):
     file = psession.query(File).filter(File.id == file_id).one_or_none()
     assert file is not None, "create file first"
     file.is_forbidden = True
-    return psession.commit()
-
-
-def update_property_for_file(df: pd.DataFrame) -> None:
-    """Update property for File.
-
-    Match a file with property of other dataset
-    Interactive
-
-    Usage:
-        from gdrive_insights.db.helpers import fetch_files_over_df, update_property_for_file
-        df = pd.read_feather("data/df_book.feather")
-        df = fetch_files_over_df(df)
-        update_property_for_file(df)
-    """
-    for ix, row in df[
-        ["file", "filename", "bm_title", "bm_author_name", "bm_book_id"]
-    ].iterrows():
-        print(f"\n{ix}/{len(df)}")
-        input_ = input(
-            "{filename}\nmatches\n{bm_title} - {bm_author_name}\n? type `y`: ".format(
-                **row
-            )
-        )
-        if input_ == "y":
-            row["file"].book_id = row["bm_book_id"]
-            psession.commit()
-
-
-def filter_book(df: pd.DataFrame) -> pd.DataFrame:
-    return df[df.path.str.startswith("/Books")].reset_index()
-
-
-def find_book(query, timeout=10) -> List[Dict[str, Any]]:
-    items: List[Dict[str, Any]] = []
-    try:
-        res = requests.post(
-            BOOK_EXPLORER_API_URL + "/find_book", json={"query": query}, timeout=timeout
-        )
-        items = res.json()
-    except ConnectionError as e:
-        logger.error(f"{e=!r}")
-        return items
-
-    if len(items) == 0:
-        logger.warning(f"no results for {query=}")
-
-    return items
-
-
-def match_filepath_to_book(df: pd.DataFrame) -> pd.DataFrame:
-    """Match file path to book.
-
-    Call book explorer api, to find fuzzy title-author_name match
-
-    Usage:
-        df_book = df.pipe(filter_book)
-        df_book = match_filepath_to_book(df_book.head(20))
-        df_book[df_book.filter(regex=r"bm.+").columns | ["filename"]].head(20)
-
-    """
-    df["filename"] = (
-        df.path.str.replace(r"\(z-lib.org\)", "")
-        .str.replace(".pdf", "")
-        .str.split("/")
-        .map(lambda x: x[-1])
-        .str.strip()
-    )
-    df["api_response"] = df["filename"].progress_map(find_book)
-    df["best_match"] = df["api_response"].map(
-        lambda x: x[0] if isinstance(x, list) else {}
-    )
-    df = df.pipe(unnest_col, pfxCol="best_match", renameColAs="bm")
-    df["nitem"] = df["api_response"].map(len)
-
-    return df
+    psession.commit()
 
 
 def construct_file_path(
-    fileId: str, drive: discovery.Resource, fullPath="", fileName=None, debug=False
+    fileId: str,
+    drive: discovery.Resource,
+    fullPath="",
+    fileName: Optional[str] = None,
+    debug=False,
 ) -> str:
     """Construct file path.
 
@@ -131,8 +59,6 @@ def construct_file_path(
     till root node is found.
 
     fileName:   optionally pass fileName to check if path name has fileName in it
-
-    Reconstructs a file path
     """
     parent = drive.files().get(fileId=fileId, fields="parents").execute()
     name = drive.files().get(fileId=fileId, fields="name").execute().get("name", None)
@@ -204,12 +130,12 @@ def update_file_paths(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_sessions(con, n=8) -> pd.DataFrame:
     """Get fileSessions from db."""
-    q = """
+    query = """
     SELECT * FROM file_session LIMIT {};
     """.format(
         n
     )
-    df: pd.DataFrame = pd.read_sql(q, con)
+    df: pd.DataFrame = pd.read_sql(query, con)
 
     return df
 
@@ -217,16 +143,14 @@ def get_sessions(con, n=8) -> pd.DataFrame:
 def get_session_by_input(n=20) -> Optional[fileSession]:
     """Get file_session by user input."""
     psession.execute("REFRESH MATERIALIZED VIEW vw_file_sessions;")
-    q = """SELECT * FROM vw_file_sessions LIMIT {};""".format(n)
-    res = psession.execute(q).fetchall()
+    query = """SELECT * FROM vw_file_sessions LIMIT {};""".format(n)
+    res = psession.execute(query).fetchall()
     df = pd.DataFrame(res)
 
     fs: Optional[fileSession] = None
 
     if not df.empty:
         df = df.set_index("sid")
-        # todo: display file_name_agg with one file per line
-
         input_ = input(f"{df.to_string()}\n\nselect index of session to use: ")
 
         fs_ix = int(input_)
@@ -248,10 +172,10 @@ def get_session_by_file_ids(file_ids: List[str]) -> Optional[fileSession]:
     if non-empty, return the match
     """
     fmt_ids: str = "'{0}'".format("', '".join(file_ids))
-    q = """SELECT * FROM file_session_association WHERE file_id IN ({});""".format(
+    query = """SELECT * FROM file_session_association WHERE file_id IN ({});""".format(
         fmt_ids
     )
-    res = psession.execute(q).fetchall()
+    res = psession.execute(query).fetchall()
     df = pd.DataFrame(res)
 
     fs: Optional[fileSession] = None
@@ -299,9 +223,12 @@ def get_file_ids_of_session(fs_id: int) -> List[str]:
         fs_id
     )
     res = psession.execute(query).scalars().fetchall()
-    # df = pd.DataFrame(res)
 
     return list(res)
+
+
+def is_not_none(x: Optional[int]) -> TypeGuard[int]:
+    return x is not None
 
 
 def get_pdfs_manual(con, n=30) -> pd.DataFrame:
@@ -313,10 +240,14 @@ def get_pdfs_manual(con, n=30) -> pd.DataFrame:
         f"{view.to_string()}\n\nselect indices of rows to keep, separated by spaces: "
     )
 
-    rows = map(lambda x: int(x) if len(x) > 0 else None, input_.split(" "))
-    ixs: List[int] = list(filter(lambda x: x is not None, rows))
+    rows: List[Optional[int]] = list(
+        map(lambda x: int(x) if len(x) > 0 else None, input_.split(" "))
+    )
+    # is_not_none: Callable[[Any], bool] = lambda x: x is not None
+    ixs: List[int] = list(filter(is_not_none, rows))
 
-    return df.iloc[ixs].sort_index()
+    res: pd.DataFrame = df.iloc[ixs].sort_index()
+    return res
 
 
 def popen_file(cmd_args):
