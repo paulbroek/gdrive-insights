@@ -2,27 +2,21 @@
 
 import logging
 from subprocess import Popen
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import gdrive_insights.config as config_dir
 import pandas as pd
-import requests
 from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy.future import select  # type: ignore[import]
-from tqdm import tqdm  # type: ignore[import]
-from typing_extensions import TypeGuard
 
-from ..settings import BOOK_EXPLORER_API_URL
+from ..core.utils import is_not_none
 from .models import File, fileSession
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
 
 logger = logging.getLogger(__name__)
-
-# use tqdm with df.map()
-tqdm.pandas()
 
 
 async def create_many_items(asession, *args, **kwargs):
@@ -225,10 +219,6 @@ def get_file_ids_of_session(fs_id: int) -> List[str]:
     res = psession.execute(query).scalars().fetchall()
 
     return list(res)
-
-
-def is_not_none(x: Optional[int]) -> TypeGuard[int]:
-    return x is not None
 
 
 def get_pdfs_manual(con, n=30) -> pd.DataFrame:

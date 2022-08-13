@@ -31,23 +31,21 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from googleapiclient.discovery import build  # type: ignore[import]
-from googleapiclient.errors import HttpError  # type: ignore[import]
-from rarc_utils.log import setup_logger
-from rarc_utils.sqlalchemy_base import get_async_session, load_config
-from tqdm import tqdm  # type: ignore[import]
-
 import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
 from gdrive_insights.args import ArgParser
 from gdrive_insights.core.utils import unnest_col
-from gdrive_insights.db.helpers import (filter_book, map_files_to_path,
-                                        match_filepath_to_book,
-                                        update_file_paths, update_is_forbidden)
+# from gdrive_insights.db.helpers import (map_files_to_path, update_file_paths,
+#                                         update_is_forbidden)
 from gdrive_insights.db.methods import methods as dm
 from gdrive_insights.db.models import psql
 from gdrive_insights.settings import CHANGES_FILE, FILES_FILE, REVISIONS_FILE
+from googleapiclient.discovery import build  # type: ignore[import]
+from googleapiclient.errors import HttpError  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
+from rarc_utils.log import setup_logger
+from rarc_utils.sqlalchemy_base import get_async_session, load_config
+from tqdm import tqdm  # type: ignore[import]
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 

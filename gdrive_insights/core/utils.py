@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 import pandas as pd
+from typing_extensions import TypeGuard
 
 logger = logging.getLogger(__name__)
 
@@ -32,3 +33,6 @@ def unnest_col(
         del df[pfxCol]
 
     return df
+
+def is_not_none(x: Optional[int]) -> TypeGuard[int]:
+    return x is not None
