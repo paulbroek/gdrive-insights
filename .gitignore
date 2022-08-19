@@ -15,6 +15,10 @@ client_id.json
 
 *.feather
 
+# vim
+.vim
+.swp
+
 # C extensions
 *.so
 

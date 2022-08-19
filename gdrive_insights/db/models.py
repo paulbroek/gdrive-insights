@@ -91,7 +91,7 @@ class pageToken(Base):
     __tablename__ = "page_token"
     id = Column(Integer, primary_key=True)
     table = Column(String, nullable=False)
-    value = Column(String, nullable=False)
+    value = Column(String, nullable=False, unique=True)
 
     created = Column(DateTime, server_default=func.now())  # current_timestamp()
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -198,16 +198,6 @@ class File(Base):
     def open_pdfs(cls):
         pass
 
-    # def escape_file_path(self) -> Optional[str]:
-    #     """Espace file path.
-
-    #     To open files in linux
-    #     """
-    #     if self.path is None:
-    #         return None
-
-    #     return self.path.replace(" ", "/\ ").replace("(", "/(").replace(")", "/)")
-
 
 class Change(Base):
     """Represent a change for a user or shared drive.
@@ -217,7 +207,6 @@ class Change(Base):
     """
 
     __tablename__ = "change"
-    # id = Column(Integer, primary_key=True)
     id = Column(
         UUID(as_uuid=True),
         primary_key=True,

@@ -1,17 +1,19 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
+from datetime import datetime
 from subprocess import Popen
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import gdrive_insights.config as config_dir
 import pandas as pd
 from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
+from sqlalchemy import and_
 from sqlalchemy.future import select  # type: ignore[import]
 
 from ..core.utils import is_not_none
-from .models import File, fileSession
+from .models import File, fileSession, pageToken
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 psession = get_session(psql)()
@@ -56,7 +58,7 @@ def construct_file_path(
     """
     parent = drive.files().get(fileId=fileId, fields="parents").execute()
     name = drive.files().get(fileId=fileId, fields="name").execute().get("name", None)
-    parent_id = parent.get("parents", None)
+    parent_id: Optional[str] = parent.get("parents", None)
     parent_id = parent_id[0] if parent_id is not None else None
 
     if parent_id is not None:
@@ -89,11 +91,17 @@ def map_files_to_path(df: pd.DataFrame, drive: discovery.Resource) -> pd.DataFra
 
 
 def fetch_files_over_df(df: pd.DataFrame, idCol="id") -> pd.DataFrame:
-    """Fetch files over all dataframe rows."""
+    """Fetch files over all dataframe rows.
+
+    Adds `file` col to df
+    """
     assert idCol in df.columns, f"{idCol=} not in {df.columns=}"
-    ids = df[idCol].unique()
-    files = psession.execute(select(File).filter(File.id.in_(ids))).scalars().fetchall()
-    files_by_id = dict(zip((f.id for f in files), files))
+
+    ids: List[str] = df[idCol].unique().tolist()
+    files: List[File] = (
+        psession.execute(select(File).filter(File.id.in_(ids))).scalars().fetchall()
+    )
+    files_by_id: Dict[str, File] = dict(zip((f.id for f in files), files))
     df["file"] = df[idCol].map(files_by_id)
 
     return df
@@ -106,20 +114,55 @@ def update_file_paths(df: pd.DataFrame) -> pd.DataFrame:
 
     # fetch files
     df = fetch_files_over_df(df)
-    nmissing = df["file"].isna().sum()
+    nmissing: int = df["file"].isna().sum()
     logger.info(f"{nmissing=:,}")
 
     # update file_paths
-    file_and_path = df[["file", "path"]].to_records(index=False)
+    file_and_path: List[Tuple[File, str]] = (
+        df[["file", "path"]].to_records(index=False).tolist()
+    )
     for file, path in file_and_path:
         file.path = path
 
-    nupdated = len(file_and_path)
+    nupdated: int = len(file_and_path)
     logger.info(f"{nupdated=:,}")
 
     psession.commit()
 
     return df
+
+
+def get_page_tokens(con, n=2) -> pd.DataFrame:
+    """Get page_token from db."""
+    query = """
+    SELECT id, "table", value::int AS val_int, created, updated FROM page_token ORDER BY val_int DESC LIMIT {};
+    """.format(
+        n
+    )
+    df: pd.DataFrame = pd.read_sql(query, con)
+
+    return df
+
+
+def get_or_update_page_token(table: str, value: str) -> None:
+    """Get or update pageToken from db."""
+    assert table is not None
+    assert value is not None
+    pt = (
+        psession.execute(
+            select(pageToken).where(
+                and_(pageToken.table == table, pageToken.value == value)
+            )
+        )
+        .scalars()
+        .one_or_none()
+    )
+    if pt is None:
+        pt = pageToken(table=table, value=value)
+        psession.add(pt)
+
+    pt.updated = datetime.utcnow()
+    psession.commit()
 
 
 def get_sessions(con, n=8) -> pd.DataFrame:
@@ -205,6 +248,7 @@ def get_pdfs(con, file_ids: Optional[List[str]] = None, n=5) -> pd.DataFrame:
         query += """ AND file_id IN ({}) """.format(fmt_ids)
 
     query += """LIMIT {}""".format(n)
+    logger.debug(f"{query=}")
 
     df: pd.DataFrame = pd.read_sql(query, con)
 

@@ -35,21 +35,24 @@ import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
 from gdrive_insights.args import ArgParser
 from gdrive_insights.core.utils import unnest_col
-# from gdrive_insights.db.helpers import (map_files_to_path, update_file_paths,
-#                                         update_is_forbidden)
+from gdrive_insights.db.helpers import get_or_update_page_token
 from gdrive_insights.db.methods import methods as dm
 from gdrive_insights.db.models import psql
-from gdrive_insights.settings import CHANGES_FILE, FILES_FILE, REVISIONS_FILE
+from gdrive_insights.settings import (CHANGES_FILE, CLIENT_ID_JSON_FILE,
+                                      FILES_FILE, REVISIONS_FILE,
+                                      STORAGE_JSON_FILE)
 from googleapiclient.discovery import build  # type: ignore[import]
 from googleapiclient.errors import HttpError  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
 from rarc_utils.log import setup_logger
-from rarc_utils.sqlalchemy_base import get_async_session, load_config
+from rarc_utils.sqlalchemy_base import (get_async_session, get_session,
+                                        load_config)
 from tqdm import tqdm  # type: ignore[import]
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
 
 async_session = get_async_session(psql)
+psession = get_session(psql)()
 
 log_fmt = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # name
 logger = setup_logger(
@@ -69,12 +72,12 @@ con = psycopg2.connect(
 
 
 #### google drive api
-store = file.Storage("storage.json")
+store = file.Storage(STORAGE_JSON_FILE)
 creds = store.get()
 
 creds = store.get()
 if not creds or creds.invalid:
-    flow = client.flow_from_clientsecrets("client_id.json", SCOPES)
+    flow = client.flow_from_clientsecrets(CLIENT_ID_JSON_FILE, SCOPES)
     creds = tools.run_flow(flow, store)
 
 DRIVE = build("drive", "v3", credentials=creds)
@@ -83,10 +86,11 @@ DRIVE = build("drive", "v3", credentials=creds)
 
 def changes_to_pandas(items: List[Dict[str, Any]]) -> pd.DataFrame:
 
-    df = pd.DataFrame(changes)
+    df = pd.DataFrame(items)
     df = df.dropna(subset="file").reset_index()
     df["page_token"] = df["page_token"].astype(int)
     df = df.pipe(unnest_col, pfxCol="file")
+    df["id"] = df["fileId"]
 
     return df
 
@@ -364,7 +368,12 @@ def fetch_changes(saved_start_page_token, max_fetch=None) -> List[dict]:
             if "newStartPageToken" in response:
                 # Last page, save this token for the next polling interval
                 saved_start_page_token = response.get("newStartPageToken")
+
             page_token = response.get("nextPageToken")
+
+            # submit page_token to postgres
+            if page_token is not None:
+                get_or_update_page_token("change", page_token)
 
             if max_fetch is not None and nfetch >= max_fetch:
                 break
@@ -477,11 +486,6 @@ if __name__ == "__main__":
     # rv = revisions_from_feather()
     # revisions_data_analysis(df, rv).tail(25)
 
-    # todo: push files, revisions, but filter out irrelevant files first
-
-    # todo: save revisions to postgres interactively
-
-    # todo: open frequently opened files directly from command line?
-
     # todo: make async, as soon as files / revisions come in, push them in batches to postgres. how to use gdrive api asynchronously?
+
     # gdrive api does not have async support, yet
