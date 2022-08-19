@@ -20,7 +20,7 @@ class methods:
         records_dict = {}
 
         recs = cls._make_file_recs(df)
-        records_dict["channel"] = await create_many_items(
+        records_dict["file"] = await create_many_items(
             async_session,
             File,
             recs,
@@ -42,7 +42,7 @@ class methods:
         records_dict = {}
 
         recs = cls._make_revision_recs(df)
-        records_dict["channel"] = await create_many_items(
+        records_dict["revision"] = await create_many_items(
             async_session,
             Revision,
             recs,
