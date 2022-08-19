@@ -1,22 +1,9 @@
 version: "3.9"
 
 services:
-  # sync-gdrive-revisions:
-  #   restart: unless-stopped
-  #   image: .
-  #   container_name: sync-gdrive-revisions
-  #   command:
-  #       - /bin/bash
-  #       - -c
-  #       - |
-  #           cd /mnt_src
-  #           ????
-  #   volumes:
-  #     - ./gdrive_insights:/mnt_src
-
   update-gdrive-files:
     restart: unless-stopped
-    image: .
+    build: .
     container_name: update-gdrive-files
     command:
       - /bin/bash
@@ -27,3 +14,16 @@ services:
 
     volumes:
       - ./gdrive_insights:/mnt_src
+
+  # sync-gdrive-revisions:
+  #   restart: unless-stopped
+  #   build: .
+  #   container_name: sync-gdrive-revisions
+  #   command:
+  #       - /bin/bash
+  #       - -c
+  #       - |
+  #           cd /mnt_src
+  #           ????
+  #   volumes:
+  #     - ./gdrive_insights:/mnt_src
