@@ -1,13 +1,17 @@
 """helpers.py, helper methods for SQLAlchemy models, listed in models.py."""
 
 import logging
+import sys
 from datetime import datetime
+from functools import partial
+from multiprocessing import Pool
 from subprocess import Popen
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import gdrive_insights.config as config_dir
 import pandas as pd
 from googleapiclient import discovery  # type: ignore[import]
+from rarc_utils.decorators import items_per_sec
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy import and_
 from sqlalchemy.future import select  # type: ignore[import]
@@ -81,13 +85,42 @@ def construct_file_path(
     return fullPathOut
 
 
+@items_per_sec
+def construct_file_path_in_parallel(
+    nprocess: int, drive: discovery.Resource, fileIds: List[str]
+) -> List[Dict[str, Any]]:
+    """Construct file path in parallel."""
+    pool = Pool(processes=nprocess)
+
+    # todo: google throws `dailyLimitExceededUnreg` error
+    # more help: https://cloud.google.com/docs/quota#capping_usage
+    lres = []
+    total: int = 0
+    logger.info(f"{nprocess=}")
+    # can this be rewritten using with ... ?
+    pconstruct_file_path = partial(construct_file_path, drive=drive)
+    for i, x in enumerate(pool.imap_unordered(pconstruct_file_path, fileIds)):
+        total += len(x)
+        sys.stdout.write(f"Processed {i:,} line(s). Total processed: {total:,}\r")
+        sys.stdout.flush()
+
+        lres.append(x)
+
+    return sum(lres, [])
+
+
 def map_files_to_path(
-    df: pd.DataFrame, drive: discovery.Resource, onlyMissing=False
+    df: pd.DataFrame, drive: discovery.Resource, onlyMissing=False, nproc=4
 ) -> pd.DataFrame:
     """Call `construct_file_path` on all `id` rows."""
     # todo: implement `onlyMissing`
     df = df.copy()
-    # df["path"] = df["id"].progress_map(lambda x: construct_file_path(x, drive=drive))
+    df["path"] = df["id"].progress_map(lambda x: construct_file_path(x, drive=drive))
+    # fileIds = df["id"].to_list()
+    # res = construct_file_path_in_parallel(nproc, drive, fileIds)
+
+    # return res
+
     df["path"] = df[["id", "name"]].progress_apply(
         lambda row: construct_file_path(row["id"], fileName=row["name"], drive=drive),
         axis=1,
@@ -282,7 +315,6 @@ def get_pdfs_manual(con, n=30) -> pd.DataFrame:
     rows: List[Optional[int]] = list(
         map(lambda x: int(x) if len(x) > 0 else None, input_.split(" "))
     )
-    # is_not_none: Callable[[Any], bool] = lambda x: x is not None
     ixs: List[int] = list(filter(is_not_none, rows))
 
     res: pd.DataFrame = df.iloc[ixs].sort_index()
