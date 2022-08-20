@@ -10,6 +10,7 @@ services:
       - -c
       - |
         cd /mnt_src
+        # run `fetch_new_files.py` every 6 hours
         python fetch_new_files.py -i 6
 
     volumes:

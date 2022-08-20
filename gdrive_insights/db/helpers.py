@@ -11,6 +11,7 @@ from googleapiclient import discovery  # type: ignore[import]
 from rarc_utils.sqlalchemy_base import create_many, get_session, load_config
 from sqlalchemy import and_
 from sqlalchemy.future import select  # type: ignore[import]
+from tqdm import tqdm  # type: ignore[import]
 
 from ..core.utils import is_not_none
 from .models import File, fileSession, pageToken
@@ -19,6 +20,9 @@ psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_
 psession = get_session(psql)()
 
 logger = logging.getLogger(__name__)
+
+# use tqdm with df.progress_map()
+tqdm.pandas()
 
 
 async def create_many_items(asession, *args, **kwargs):
@@ -46,7 +50,6 @@ def construct_file_path(
     drive: discovery.Resource,
     fullPath="",
     fileName: Optional[str] = None,
-    debug=False,
 ) -> str:
     """Construct file path.
 
@@ -62,31 +65,33 @@ def construct_file_path(
     parent_id = parent_id[0] if parent_id is not None else None
 
     if parent_id is not None:
-        if debug:
-            print(f"{parent_id=:<40} {name=:<50} ")
+        logger.debug(f"{parent_id=:<40} {name=:<50} ")
         fullPath = "/" + name + fullPath
         return construct_file_path(
             parent_id, drive, fileName=fileName, fullPath=fullPath
         )
 
     if fileName is not None:
-        print(f"{fileName=:<40} {fullPath=}")
+        logger.info(f"{fileName=:<40} {fullPath=}")
     else:
-        print(f"{fullPath=}")
+        logger.info(f"{fullPath=}")
 
     fullPathOut: str = fullPath
 
     return fullPathOut
 
 
-def map_files_to_path(df: pd.DataFrame, drive: discovery.Resource) -> pd.DataFrame:
+def map_files_to_path(
+    df: pd.DataFrame, drive: discovery.Resource, onlyMissing=False
+) -> pd.DataFrame:
     """Call `construct_file_path` on all `id` rows."""
+    # todo: implement `onlyMissing`
     df = df.copy()
-    df["path"] = df["id"].map(lambda x: construct_file_path(x, drive=drive))
-    # df["path"] = df[["id", "name"]].apply(
-    #     lambda row: construct_file_path(row["id"], fileName=row["name"], drive=drive),
-    #     axis=1,
-    # )
+    # df["path"] = df["id"].progress_map(lambda x: construct_file_path(x, drive=drive))
+    df["path"] = df[["id", "name"]].progress_apply(
+        lambda row: construct_file_path(row["id"], fileName=row["name"], drive=drive),
+        axis=1,
+    )
     return df
 
 
