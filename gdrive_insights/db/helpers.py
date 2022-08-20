@@ -17,7 +17,7 @@ from sqlalchemy import and_
 from sqlalchemy.future import select  # type: ignore[import]
 from tqdm import tqdm  # type: ignore[import]
 
-from ..core.utils import is_not_none
+from ..core.utils import create_gdrive, is_not_none
 from .models import File, fileSession, pageToken
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
@@ -51,7 +51,7 @@ def update_is_forbidden(file_id: str) -> None:
 
 def construct_file_path(
     fileId: str,
-    drive: discovery.Resource,
+    drive: Optional[discovery.Resource] = None,
     fullPath="",
     fileName: Optional[str] = None,
 ) -> str:
@@ -63,6 +63,9 @@ def construct_file_path(
 
     fileName:   optionally pass fileName to check if path name has fileName in it
     """
+    if drive is None:
+        drive = create_gdrive()
+
     parent = drive.files().get(fileId=fileId, fields="parents").execute()
     name = drive.files().get(fileId=fileId, fields="name").execute().get("name", None)
     parent_id: Optional[str] = parent.get("parents", None)
@@ -98,7 +101,8 @@ def construct_file_path_in_parallel(
     total: int = 0
     logger.info(f"{nprocess=}")
     # can this be rewritten using with ... ?
-    pconstruct_file_path = partial(construct_file_path, drive=drive)
+    # pconstruct_file_path = partial(construct_file_path, drive=drive)
+    pconstruct_file_path = construct_file_path
     for i, x in enumerate(pool.imap_unordered(pconstruct_file_path, fileIds)):
         total += len(x)
         sys.stdout.write(f"Processed {i:,} line(s). Total processed: {total:,}\r")

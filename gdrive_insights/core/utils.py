@@ -2,9 +2,15 @@ import logging
 from typing import Optional
 
 import pandas as pd
+from googleapiclient.discovery import build  # type: ignore[import]
+from oauth2client import client, file, tools  # type: ignore[import]
 from typing_extensions import TypeGuard
 
+from ..settings import CLIENT_ID_JSON_FILE, STORAGE_JSON_FILE
+
 logger = logging.getLogger(__name__)
+
+SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 
 
 def unnest_col(
@@ -34,5 +40,18 @@ def unnest_col(
 
     return df
 
+
 def is_not_none(x: Optional[int]) -> TypeGuard[int]:
     return x is not None
+
+
+def create_gdrive():
+    store = file.Storage(STORAGE_JSON_FILE)
+    creds = store.get()
+
+    creds = store.get()
+    if not creds or creds.invalid:
+        flow = client.flow_from_clientsecrets(CLIENT_ID_JSON_FILE, SCOPES)
+        creds = tools.run_flow(flow, store)
+
+    DRIVE = build("drive", "v3", credentials=creds)

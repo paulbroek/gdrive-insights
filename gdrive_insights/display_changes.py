@@ -34,16 +34,12 @@ import pandas as pd
 import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
 from gdrive_insights.args import ArgParser
-from gdrive_insights.core.utils import unnest_col
+from gdrive_insights.core.utils import create_gdrive, unnest_col
 from gdrive_insights.db.helpers import get_or_update_page_token
 from gdrive_insights.db.methods import methods as dm
 from gdrive_insights.db.models import psql
-from gdrive_insights.settings import (CHANGES_FILE, CLIENT_ID_JSON_FILE,
-                                      FILES_FILE, REVISIONS_FILE,
-                                      STORAGE_JSON_FILE)
-from googleapiclient.discovery import build  # type: ignore[import]
+from gdrive_insights.settings import CHANGES_FILE, FILES_FILE, REVISIONS_FILE
 from googleapiclient.errors import HttpError  # type: ignore[import]
-from oauth2client import client, file, tools  # type: ignore[import]
 from rarc_utils.log import setup_logger
 from rarc_utils.sqlalchemy_base import (get_async_session, get_session,
                                         load_config)
@@ -59,7 +55,6 @@ logger = setup_logger(
     cmdLevel=logging.INFO, saveFile=0, savePandas=0, jsonLogger=0, color=1, fmt=log_fmt
 )
 
-SCOPES = "https://www.googleapis.com/auth/drive.readonly.metadata"
 UNNAMED = "Naamloos document"
 GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
 PDF_FILETYPE = "application/pdf"
@@ -72,15 +67,7 @@ con = psycopg2.connect(
 
 
 #### google drive api
-store = file.Storage(STORAGE_JSON_FILE)
-creds = store.get()
-
-creds = store.get()
-if not creds or creds.invalid:
-    flow = client.flow_from_clientsecrets(CLIENT_ID_JSON_FILE, SCOPES)
-    creds = tools.run_flow(flow, store)
-
-DRIVE = build("drive", "v3", credentials=creds)
+DRIVE = create_gdrive()
 ####
 
 
