@@ -48,7 +48,14 @@ cd ~/repos/gdrive-insights/gdrive_insights/db
 ipy models.py -i -- --create 1
 ```
 
-### 2.1 To-do
+### 2.1 How to run
+
+```bash
+ipy open_files.py -i -- -m sesssion
+ipy open_files.py -i -- -m file
+```
+
+### 3.1 To-do
 
 -   [ ] Open frequently changed files directly from command line
 -   [ ] Get full file path with [Parents endpoints](https://developers.google.com/drive/api/v2/reference/parents/get)
