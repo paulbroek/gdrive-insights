@@ -96,4 +96,6 @@ if __name__ == "__main__":
     else:
         raise Exception(f"Invalid programMode: {msg}")
 
+    con.close()
+
     open_pdfs(pdfs, fs=fs, pfx="/home/paul/gdrive", ctxmgr=False)

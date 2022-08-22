@@ -56,6 +56,7 @@ parser.add_argument(
 
 
 def fetch_new_files(args):
+    """Fetch new files from gdrive API."""
     start_page_token = (
         args.start_page_token or get_page_tokens(con, n=2).iloc[0].val_int
     )
@@ -70,6 +71,7 @@ def fetch_new_files(args):
 
 
 def main(args):
+    """Main functionality."""
     while True:
         res_files = fetch_new_files(args)
 

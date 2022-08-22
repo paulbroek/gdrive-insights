@@ -3,7 +3,6 @@
 import logging
 import sys
 from datetime import datetime
-from functools import partial
 from multiprocessing import Pool
 from subprocess import Popen
 from typing import Any, Dict, List, Optional, Tuple

@@ -11,7 +11,7 @@ Steps I did:
 See Google Drive API endpoints:
     https://developers.google.com/drive/api/v3/reference?apix=true
 
-Todo: 
+Todo:
     - Now that you know file changes, you can find all pdf files in the Books folder
     - Whenever you add a highlight, it will be recorded by google, so you can reconstruct
         which books you read most
