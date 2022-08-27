@@ -44,7 +44,7 @@ parser.add_argument(
     "--start_page_token",
     type=int,
     default=None,
-    help="start_page_token to start polling from (low number will always start from first change in time)",
+    help="start_page_token to start polling from (low number will always start from first point in time)",
 )
 parser.add_argument(
     "--interval",
@@ -56,7 +56,7 @@ parser.add_argument(
 
 def fetch_new_files(args):
     """Fetch new files from gdrive API."""
-    start_page_token = (
+    start_page_token: str = (
         args.start_page_token or get_page_tokens(con, n=2).iloc[0].val_int
     )
     start_page_token = str(start_page_token)
