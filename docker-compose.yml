@@ -11,7 +11,7 @@ services:
       - |
         cd /mnt_src
         # run `fetch_new_files.py` every 6 hours
-        python fetch_new_files.py -i 6
+        python fetch_new_files.py --interval 6
 
     volumes:
       - ./gdrive_insights:/mnt_src

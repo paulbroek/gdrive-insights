@@ -47,7 +47,6 @@ parser.add_argument(
     help="start_page_token to start polling from (low number will always start from first change in time)",
 )
 parser.add_argument(
-    "-i",
     "--interval",
     type=int,
     default=None,
@@ -71,7 +70,7 @@ def fetch_new_files(args):
 
 
 def main(args):
-    """Main functionality."""
+    """Run main app."""
     while True:
         res_files = fetch_new_files(args)
 
