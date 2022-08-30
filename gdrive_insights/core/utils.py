@@ -1,8 +1,9 @@
+"""utils.py."""
 import logging
 from typing import Optional
 
 import pandas as pd
-from googleapiclient.discovery import build  # type: ignore[import]
+from googleapiclient.discovery import Resource, build  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
 from typing_extensions import TypeGuard
 
@@ -42,10 +43,12 @@ def unnest_col(
 
 
 def is_not_none(x: Optional[int]) -> TypeGuard[int]:
+    """Return Int is not None."""
     return x is not None
 
 
-def create_gdrive():
+def create_gdrive() -> Resource:
+    """Create Google Drive API connector."""
     store = file.Storage(STORAGE_JSON_FILE)
     creds = store.get()
 
@@ -55,3 +58,5 @@ def create_gdrive():
         creds = tools.run_flow(flow, store)
 
     DRIVE = build("drive", "v3", credentials=creds)
+
+    return DRIVE

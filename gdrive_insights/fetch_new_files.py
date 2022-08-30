@@ -17,10 +17,10 @@ from time import sleep
 
 import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
+from gdrive_insights.data_methods import data_methods as dm
 from gdrive_insights.db.helpers import get_page_tokens
-from gdrive_insights.db.methods import methods as dm
+from gdrive_insights.db.methods import methods as db_methods
 from gdrive_insights.db.models import psql
-from gdrive_insights.display_changes import changes_to_pandas, fetch_changes
 from rarc_utils.log import setup_logger
 from rarc_utils.sqlalchemy_base import get_async_session, load_config
 
@@ -33,7 +33,6 @@ psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_
 
 async_session = get_async_session(psql)
 
-# connect to postgresql
 con = psycopg2.connect(
     database=psql.db, user=psql.user, password=psql.passwd, host=psql.host, port="5432"
 )
@@ -61,10 +60,10 @@ def fetch_new_files(args):
     )
     start_page_token = str(start_page_token)
 
-    changes = fetch_changes(saved_start_page_token=start_page_token)
-    df = changes_to_pandas(changes)
+    changes = dm.fetch_changes(saved_start_page_token=start_page_token)
+    df = dm.changes_to_pandas(changes)
 
-    res_files = loop.run_until_complete(dm.push_files(df, async_session))
+    res_files = loop.run_until_complete(db_methods.push_files(df, async_session))
 
     return res_files
 
