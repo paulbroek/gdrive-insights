@@ -18,3 +18,6 @@ BOOK_FILE = (DATA_DIR / "df_book").with_suffix(FEATHER_SFX)
 
 STORAGE_JSON_FILE = (REPO_DIR / "storage").with_suffix(JSON_SFX)
 CLIENT_ID_JSON_FILE = (REPO_DIR / "client_id").with_suffix(JSON_SFX)
+
+GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
+PDF_FILETYPE = "application/pdf"

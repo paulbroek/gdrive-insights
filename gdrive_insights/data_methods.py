@@ -37,7 +37,7 @@ from tqdm import tqdm  # type: ignore[import]
 from .core.utils import create_gdrive, unnest_col
 from .db.helpers import get_or_update_page_token, update_is_forbidden
 from .db.models import psql
-from .settings import REVISIONS_FILE
+from .settings import GOOGLE_DOCUMENT_FILETYPE, PDF_FILETYPE, REVISIONS_FILE
 
 log_fmt = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # name
 logger = setup_logger(
@@ -45,15 +45,12 @@ logger = setup_logger(
 )
 
 UNNAMED = "Naamloos document"
-GOOGLE_DOCUMENT_FILETYPE = "application/vnd.google-apps.document"
-PDF_FILETYPE = "application/pdf"
 FILE_ID = "id"
 
 # connect to postgresql
 con = psycopg2.connect(
     database=psql.db, user=psql.user, password=psql.passwd, host=psql.host, port="5432"
 )
-
 
 #### google drive api
 DRIVE = create_gdrive()
@@ -181,7 +178,8 @@ class data_methods:
         return view
 
     @classmethod
-    def filter_files(df, keep=None):
+    def filter_files(cls, df: pd.DataFrame, keep=None) -> pd.DataFrame:
+        """Filter files on google documents and pdf type."""
         view = pd.concat(
             [
                 df.pipe(cls.filter_google_documents),

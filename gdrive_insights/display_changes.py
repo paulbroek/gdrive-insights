@@ -125,6 +125,5 @@ if __name__ == "__main__":
     # rv = revisions_from_feather()
     # revisions_data_analysis(df, rv).tail(25)
 
-    # todo: make async, as soon as files / revisions come in, push them in batches to postgres. how to use gdrive api asynchronously?
-
+    # todo: make async, as soon as files / revisions come in, push them in batches to postgres.
     # gdrive api does not have async support, yet

@@ -21,16 +21,3 @@ services:
 
     environment:
       - GDRIVE_INSIGHTS_REPO=/mnt_src
-
-  # sync-gdrive-revisions:
-  #   restart: unless-stopped
-  #   build: .
-  #   container_name: sync-gdrive-revisions
-  #   command:
-  #       - /bin/bash
-  #       - -c
-  #       - |
-  #           cd /mnt_src
-  #           ????
-  #   volumes:
-  #     - ./gdrive_insights:/mnt_src
