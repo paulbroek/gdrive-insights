@@ -3,8 +3,11 @@
 Open last session of files.
 
 Usage:
+    conda activate py39
+    cd ~/repos/gdrive-insights/gdrive_insights
     ipy open_files.py -i -- -m session
-    ipy open_files.py -i -- -m file
+    ipy open_files.py -i -- -m manual
+    ipy open_files.py -i -- -m add_file
 """
 import argparse
 import logging
@@ -14,7 +17,8 @@ from typing import Optional
 
 import psycopg2  # type: ignore[import]
 from gdrive_insights import config as config_dir
-from gdrive_insights.db.helpers import (get_file_ids_of_session, get_pdfs,
+from gdrive_insights.db.helpers import (add_file_to_session,
+                                        get_file_ids_of_session, get_pdfs,
                                         get_pdfs_manual, get_session_by_input,
                                         open_pdfs)
 from gdrive_insights.db.models import fileSession
@@ -33,8 +37,9 @@ con = psycopg2.connect(
 
 
 class programMode(Enum):
-    FILE = 0
+    MANUAL = 0
     SESSION = 1
+    ADD_FILE = 2
 
 
 # construct file path if missing
@@ -51,8 +56,12 @@ CLI.add_argument(
     "-m",
     "--mode",
     type=str,
-    default=programMode.FILE.name,
-    help="mode to use, file or session mode \nfile mode (0, default) allows to select individual files, \nsession mode (1) allows to select recent sessions",
+    default=programMode.MANUAL.name,
+    choices=list(map(str.lower, programMode.__members__)),
+    help="mode to use, file or session mode \
+            \nmanual mode (0, default) allows to select individual files, \
+            \nsession mode (1) allows to select recent sessions \
+            \nmode (2) for adding new files to existing sessions",
 )
 CLI.add_argument(
     "-n",
@@ -83,20 +92,24 @@ if __name__ == "__main__":
 
     fs: Optional[fileSession] = None
 
-    if mode == programMode.FILE:
-        pdfs = get_pdfs_manual(con, n=25)
+    with con:
+        if mode == programMode.MANUAL:
+            pdfs = get_pdfs_manual(con, n=25)
 
-    elif mode == programMode.SESSION:
-        fs = get_session_by_input(n=20)
-        file_ids = get_file_ids_of_session(fs.id)
-        print(f"{file_ids=}")
-        pdfs = get_pdfs(con, file_ids=file_ids)
+        elif mode == programMode.SESSION:
+            fs = get_session_by_input(n=20)
+            file_ids = get_file_ids_of_session(fs.id)
+            print(f"{file_ids=}")
+            pdfs = get_pdfs(con, file_ids=file_ids)
 
-        # .. user selects session
+        elif mode == programMode.ADD_FILE:
+            fs = get_session_by_input(n=20)
+            # add file to this session     
+            file_id: str = input("pass file_id to add to session: ")   
+            add_file_to_session(fs, file_id)
+            sys.exit()
 
-    else:
-        raise Exception(f"Invalid programMode: {msg}")
-
-    con.close()
+        else:
+            raise Exception(f"Invalid programMode: {msg}")
 
     open_pdfs(pdfs, fs=fs, pfx="/home/paul/gdrive", ctxmgr=False)

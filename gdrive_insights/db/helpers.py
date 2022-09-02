@@ -324,6 +324,32 @@ def get_pdfs_manual(con, n=30) -> pd.DataFrame:
     return res
 
 
+def add_file_to_session(fs: fileSession, file_id: str) -> None:
+    """Add file to session."""
+    # check if file_id is already in session
+    if file_id in (f.id for f in fs.files):
+        logger.warning("file already in session")
+        return
+
+    # check if file_id exists
+    # q = "SELECT * FROM file WHERE id = '{}'".format(file_id)
+    q = select(File).where(File.id == file_id)
+    file: Optional[File] = psession.execute(q).scalars().one_or_none()
+    if file is None:
+        logger.warning("file_id does not exist in database")
+        return
+
+    # check if file path is not None
+    if file.path is None:
+        logger.warning("file path is none, please add a file path first by running `update_property_for_file_manual`")
+        return
+
+    # add file to session
+    fs.files.append(file)
+
+    psession.commit()
+
+
 def popen_file(cmd_args):
     """Open file using context manager."""
     # todo: opening with contextmanager makes the files harder to close by pressing Ctr+C
