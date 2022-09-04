@@ -1,4 +1,4 @@
-"""Settings.py, general settings for gdrive-insights."""
+"""settings.py, general settings for gdrive-insights."""
 
 import os
 from pathlib import Path
