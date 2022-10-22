@@ -13,14 +13,17 @@ See Google Drive API endpoints:
 
 Todo:
     - Now that you know file changes, you can find all pdf files in the Books folder
-    - Whenever you add a highlight, it will be recorded by google, so you can reconstruct
-        which books you read most
+    - Whenever you add a highlight, it can be detected by the API
 
 How to run:
     conda activate py39
     cd ~/repos/gdrive-insights
     pip install --upgrade .
-    ipy display_changes -i -- -s -n 5
+
+    # run:
+    ipy display_changes.py -i -- -s -n 5
+    ipy display_changes.py -i -- -s -n 5 --start_page_token 99106 --push
+
 """
 
 from __future__ import print_function

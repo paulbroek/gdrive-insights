@@ -12,7 +12,6 @@ Usage:
 import argparse
 import asyncio
 import logging
-# import sys
 from time import sleep
 
 import psycopg2  # type: ignore[import]
@@ -73,12 +72,13 @@ def main(args):
     while True:
         res_files = fetch_new_files(args)
 
+        # TODO: fetch revisions ??
+
         if args.interval is not None:
             sleep_secs = args.interval * 3600
             logger.info(f"sleeping for {sleep_secs:,} seconds / {args.interval} hours")
             sleep(sleep_secs)
         else:
-            # sys.exit()
             return res_files
 
 

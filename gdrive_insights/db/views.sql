@@ -2,7 +2,7 @@ DROP MATERIALIZED VIEW last_revised_files;
 CREATE MATERIALIZED VIEW last_revised_files AS
 SELECT
     file.id AS file_id,
-    left(file.name, 40) AS tr_file_name,
+    left(file.name, 60) AS tr_file_name,
     revision.id AS rev_id,
     -- date_trunc('seconds', revision.updated) AS rev_updated
     revision.updated AS rev_updated
@@ -12,7 +12,7 @@ FROM
 ORDER BY
     revision.updated ASC
 LIMIT
-    1000 WITH DATA;
+    100000 WITH DATA;
 
 DROP MATERIALIZED VIEW revisions_by_file;
 CREATE MATERIALIZED VIEW revisions_by_file AS
@@ -30,7 +30,7 @@ GROUP BY file.id
 ORDER BY
     nrevision DESC
 LIMIT
-    1000 WITH DATA;
+    100000 WITH DATA;
 
 DROP MATERIALIZED VIEW vw_file_sessions;
 CREATE MATERIALIZED VIEW vw_file_sessions AS
@@ -50,5 +50,5 @@ ORDER BY
     -- nused DESC, last_updated DESC
     last_updated DESC
 LIMIT
-    1000 WITH DATA;
+    100000 WITH DATA;
 

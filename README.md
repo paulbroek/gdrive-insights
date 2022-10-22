@@ -2,6 +2,12 @@
 
 Show your recent Google Drive file revisions in a streamlit dashboard. Which files do you use a lot?
 
+## 0. Config
+
+### 0.1 
+gdrive-insights can run without interacting with the file system, but to open files directly through the package mount Google Drive to the file system using `rclone` first:
+
+
 ## 1. Install
 
 ### 1.1 Oauth
@@ -51,8 +57,10 @@ ipy models.py -i -- --create 1
 ### 2.1 How to run
 
 ```bash
+# open files by saved session
 ipy open_files.py -i -- -m sesssion
-ipy open_files.py -i -- -m file
+# open files by user input, save to session
+ipy open_files.py -i -- -m manual
 ```
 
 ### 3.1 To-do
