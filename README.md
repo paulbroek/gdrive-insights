@@ -4,7 +4,7 @@ Show your recent Google Drive file revisions in a streamlit dashboard. Which fil
 
 ## 0. Config
 
-### 0.1 
+### 0.1 Mount Google Drive using `rclone`
 gdrive-insights can run without interacting with the file system, but to open files directly through the package mount Google Drive to the file system using `rclone` first:
 
 
