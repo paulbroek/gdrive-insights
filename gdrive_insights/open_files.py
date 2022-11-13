@@ -42,15 +42,6 @@ class programMode(Enum):
     ADD_FILE = 2
 
 
-# construct file path if missing
-
-# interactively select files, by typing indices
-
-# save last session to db, if exists, update existing one
-
-# or use Typer?
-
-
 CLI = argparse.ArgumentParser()
 CLI.add_argument(
     "-m",
