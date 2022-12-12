@@ -5,8 +5,8 @@ Show your recent Google Drive file revisions in a streamlit dashboard. Which fil
 ## 0. Config
 
 ### 0.1 Mount Google Drive using `rclone`
-gdrive-insights can run without interacting with the file system, but to open files directly through the package mount Google Drive to the file system using `rclone` first:
 
+gdrive-insights can run without interacting with the file system, but to open files directly through the package mount Google Drive to the file system using `rclone` first:
 
 ## 1. Install
 
@@ -44,7 +44,8 @@ And copy the file to anaconda `config` dir after installing
 
 ```bash
 pip install -U ~/repos/gdrive-insights
-cp ~/repos/gdrive-insights/gdrive_insights/config/postgres.cfg /home/paul/anaconda3/envs/py39/lib/python3.9/site-packages/gdrive_insights/config
+PYVER=10
+cp ~/repos/gdrive-insights/gdrive_insights/config/postgres.cfg /home/paul/anaconda3/envs/py3$PYVER/lib/python3.$PYVER/site-packages/gdrive_insights/config
 ```
 
 Initialize all models in database:

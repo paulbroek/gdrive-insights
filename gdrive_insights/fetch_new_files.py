@@ -20,12 +20,11 @@ from gdrive_insights.data_methods import data_methods as dm
 from gdrive_insights.db.helpers import get_page_tokens
 from gdrive_insights.db.methods import methods as db_methods
 from gdrive_insights.db.models import psql
-from rarc_utils.log import setup_logger
+from rarc_utils.log import LOG_FMT, setup_logger
 from rarc_utils.sqlalchemy_base import get_async_session, load_config
 
-log_fmt = "%(asctime)s - %(module)-16s - %(lineno)-4s - %(funcName)-16s - %(levelname)-7s - %(message)s"  # name
 logger = setup_logger(
-    cmdLevel=logging.INFO, saveFile=0, savePandas=0, jsonLogger=0, color=1, fmt=log_fmt
+    cmdLevel=logging.INFO, saveFile=0, savePandas=0, jsonLogger=0, color=1, fmt=LOG_FMT
 )
 
 psql = load_config(db_name="gdrive", cfg_file="postgres.cfg", config_dir=config_dir)
@@ -42,7 +41,8 @@ parser.add_argument(
     "--start_page_token",
     type=int,
     default=None,
-    help="start_page_token to start polling from (low number will always start from first point in time)",
+    help="start_page_token to start polling from \
+    (low number will always start from first point in time)",
 )
 parser.add_argument(
     "--interval",
