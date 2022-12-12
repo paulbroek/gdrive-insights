@@ -3,9 +3,11 @@ import logging
 from typing import Optional
 
 import pandas as pd
+from typing_extensions import TypeGuard
+
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import Resource, build  # type: ignore[import]
 from oauth2client import client, file, tools  # type: ignore[import]
-from typing_extensions import TypeGuard
 
 from ..settings import CLIENT_ID_JSON_FILE, STORAGE_JSON_FILE
 
@@ -52,7 +54,8 @@ def create_gdrive() -> Resource:
     store = file.Storage(STORAGE_JSON_FILE)
     creds = store.get()
 
-    creds = store.get()
+    # TODO: auto refresh access token
+    # however, creds.refresh(Request()) cannot be used
     if not creds or creds.invalid:
         flow = client.flow_from_clientsecrets(CLIENT_ID_JSON_FILE, SCOPES)
         creds = tools.run_flow(flow, store)
